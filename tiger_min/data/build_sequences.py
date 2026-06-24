@@ -10,19 +10,25 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description="Build contiguous item-id sequences and leave-one-out splits."
     )
-    parser.add_argument("--source", choices=["processed", "raw_amazon"], default="processed")
-    parser.add_argument("--input", default="data/raw/toy_sequences.json")
-    parser.add_argument("--output", default="data/processed/toy")
+    parser.add_argument("--source", choices=["processed", "raw_amazon"], default="raw_amazon")
+    parser.add_argument("--input", default="data/raw/reviews_Beauty_5.json.gz")
+    parser.add_argument("--output", default="data/processed/beauty_5k")
     parser.add_argument("--min-sequence-length", type=int, default=5)
-    parser.add_argument("--max-users", type=int, default=None)
+    parser.add_argument("--max-users", type=int, default=5000)
     parser.add_argument("--max-history-length", type=int, default=20)
     return parser
+
+
+def build_item2vec_sequences(sequences: list[list[int]]) -> list[list[int]]:
+    """Keep only training-visible history for item2vec to avoid valid/test leakage."""
+    return [seq[:-2] for seq in sequences if len(seq[:-2]) >= 2]
 
 
 def save_corpus(corpus: SequenceCorpus, processed_dir: str | Path) -> None:
     processed = Path(processed_dir)
     processed.mkdir(parents=True, exist_ok=True)
-    save_json(corpus.sequences, processed / "sequences.json")
+    item2vec_sequences = build_item2vec_sequences(corpus.sequences)
+    save_json(item2vec_sequences, processed / "item2vec_sequences.json")
     save_json(corpus.user2id, processed / "user2id.json")
     save_json(corpus.item2id, processed / "item2id.json")
     save_json(
@@ -31,6 +37,9 @@ def save_corpus(corpus: SequenceCorpus, processed_dir: str | Path) -> None:
             "num_users": corpus.num_users,
             "num_items": corpus.num_items,
             "num_interactions": sum(len(seq) for seq in corpus.sequences),
+            "item2vec_sequences_path": str(processed / "item2vec_sequences.json"),
+            "num_item2vec_sequences": len(item2vec_sequences),
+            "num_item2vec_interactions": sum(len(seq) for seq in item2vec_sequences),
         },
         processed / "data_meta.json",
     )
@@ -80,9 +89,12 @@ def main() -> None:
     )
     save_splits(splits, processed_dir / "splits.pt")
 
+    item2vec_sequences = build_item2vec_sequences(corpus.sequences)
     summary = {
         "num_users": corpus.num_users,
         "num_items": corpus.num_items,
+        "num_item2vec_sequences": len(item2vec_sequences),
+        "num_item2vec_interactions": sum(len(seq) for seq in item2vec_sequences),
         "num_train_samples": len(splits.train),
         "num_valid_samples": len(splits.valid),
         "num_test_samples": len(splits.test),
