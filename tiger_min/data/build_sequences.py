@@ -6,6 +6,19 @@ from tiger_min.data.splits import build_leave_one_out_splits, save_splits
 from tiger_min.utils import save_json
 
 
+def build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(
+        description="Build contiguous item-id sequences and leave-one-out splits."
+    )
+    parser.add_argument("--source", choices=["processed", "raw_amazon"], default="processed")
+    parser.add_argument("--input", default="data/raw/toy_sequences.json")
+    parser.add_argument("--output", default="data/processed/toy")
+    parser.add_argument("--min-sequence-length", type=int, default=5)
+    parser.add_argument("--max-users", type=int, default=None)
+    parser.add_argument("--max-history-length", type=int, default=20)
+    return parser
+
+
 def save_corpus(corpus: SequenceCorpus, processed_dir: str | Path) -> None:
     processed = Path(processed_dir)
     processed.mkdir(parents=True, exist_ok=True)
@@ -46,28 +59,24 @@ def build_corpus(
     return adapter.load_corpus()
 
 
-def run(
-    source: str,
-    input_path: str | Path,
-    output_dir: str | Path,
-    min_sequence_length: int = 5,
-    max_users: int | None = None,
-    max_history_length: int | None = 20,
-) -> dict:
-    processed_dir = Path(output_dir)
+def main() -> None:
+    parser = build_parser()
+    args = parser.parse_args()
+
+    processed_dir = Path(args.output)
     corpus = build_corpus(
-        source=source,
-        input_path=input_path,
-        min_sequence_length=min_sequence_length,
-        max_users=max_users,
+        source=args.source,
+        input_path=args.input,
+        min_sequence_length=args.min_sequence_length,
+        max_users=args.max_users,
     )
     save_corpus(corpus, processed_dir)
 
     splits = build_leave_one_out_splits(
         corpus=corpus,
-        min_sequence_length=min_sequence_length,
+        min_sequence_length=args.min_sequence_length,
         train_all_prefixes=True,
-        max_history_length=max_history_length,
+        max_history_length=args.max_history_length,
     )
     save_splits(splits, processed_dir / "splits.pt")
 
@@ -79,29 +88,6 @@ def run(
         "num_test_samples": len(splits.test),
     }
     save_json(summary, processed_dir / "split_meta.json")
-    return summary
-
-
-def main() -> None:
-    parser = argparse.ArgumentParser(
-        description="Build contiguous item-id sequences and leave-one-out splits."
-    )
-    parser.add_argument("--source", choices=["processed", "raw_amazon"], default="processed")
-    parser.add_argument("--input", default="data/raw/toy_sequences.json")
-    parser.add_argument("--output", default="data/processed/toy")
-    parser.add_argument("--min-sequence-length", type=int, default=5)
-    parser.add_argument("--max-users", type=int, default=None)
-    parser.add_argument("--max-history-length", type=int, default=20)
-    args = parser.parse_args()
-
-    summary = run(
-        source=args.source,
-        input_path=args.input,
-        output_dir=args.output,
-        min_sequence_length=args.min_sequence_length,
-        max_users=args.max_users,
-        max_history_length=args.max_history_length,
-    )
     print(summary)
 
 

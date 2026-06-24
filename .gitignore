@@ -6,5 +6,6 @@ __pycache__/
 .venv/
 
 /data/
+/tests/
 docs/
 configs/

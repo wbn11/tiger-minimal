@@ -43,18 +43,18 @@ E:\TIGER\tiger-repro\Scripts\python.exe -m unittest discover -s tests
 
 ```powershell
 cd E:\TIGER\tiger-minimal
-E:\TIGER\tiger-repro\Scripts\python.exe -m tiger_min.data.build
+E:\TIGER\tiger-repro\Scripts\python.exe -m tiger_min.data.build_sequences
 ```
 
 这条命令默认等价于：
 
 ```powershell
-E:\TIGER\tiger-repro\Scripts\python.exe -m tiger_min.data.build --source processed --input data\raw\toy_sequences.json --output data\processed\toy
+E:\TIGER\tiger-repro\Scripts\python.exe -m tiger_min.data.build_sequences --source processed --input data\raw\toy_sequences.json --output data\processed\toy
 ```
 
 以后处理 Amazon Beauty 原始数据时：
 
 ```powershell
 cd E:\TIGER\tiger-minimal
-E:\TIGER\tiger-repro\Scripts\python.exe -m tiger_min.data.build --source raw_amazon --input data\raw\Beauty_5.json.gz --output data\processed\beauty --max-users 5000
+E:\TIGER\tiger-repro\Scripts\python.exe -m tiger_min.data.build_sequences --source raw_amazon --input data\raw\Beauty_5.json.gz --output data\processed\beauty --max-users 5000
 ```
