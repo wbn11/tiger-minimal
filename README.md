@@ -1,31 +1,27 @@
-# TIGER Minimal Recommender
+# TIGER 生成式推荐最小实现
 
-**A PyTorch minimal implementation of TIGER-style generative recommendation**
+**基于 PyTorch 的 TIGER 风格生成式推荐复现项目**
 
 本项目基于 PyTorch 从零实现一条 TIGER 风格的生成式推荐流程，覆盖 item2vec 物品向量、简化 RQ-VAE semantic ID、Tokenizer、Encoder-Decoder Transformer、Beam Search 推理和 HR/NDCG 离线评估。
 实验使用 Amazon Beauty 5-core 数据集，处理后包含 22363 个用户、12101 个物品、131413 个训练样本、22363 个验证样本和 22363 个测试样本。
-在未使用候选集预筛选的 next-item generation 设置下，当前 Test HR@20 为 0.0557，Test NDCG@20 为 0.0227。
+评估时模型需要直接从全部 12101 个物品中生成下一个物品，没有先通过召回模块缩小候选集；在这个设置下，当前测试集 HR@20 为 0.0557，NDCG@20 为 0.0227。
 本项目是面向学习和本地复现的非官方最小实现，不追求完全对齐论文原版训练配置或论文指标。
 
-**Repository description:** Minimal TIGER-style generative recommender with item2vec, RQ-VAE semantic IDs, Transformer decoding, beam search, and HR/NDCG evaluation on Amazon Beauty.
+## 目录
 
-**Suggested GitHub Topics:** `recommender-system`, `generative-retrieval`, `tiger`, `rq-vae`, `semantic-id`, `pytorch`, `beam-search`, `amazon-beauty`
+- [项目简介](#项目简介)
+- [核心实验结果](#核心实验结果)
+- [项目流程图](#项目流程图)
+- [快速开始](#快速开始)
+- [环境与数据集](#环境与数据集)
+- [模块说明](#模块说明)
+- [与 TIGER 原论文的区别](#与-tiger-原论文的区别)
+- [实验配置与结果](#实验配置与结果)
+- [局限性与后续工作](#局限性与后续工作)
+- [论文引用](#论文引用)
+- [致谢](#致谢)
 
-## Contents
-
-- [Project Overview](#project-overview)
-- [Core Results](#core-results)
-- [Workflow](#workflow)
-- [Quick Start](#quick-start)
-- [Environment And Dataset](#environment-and-dataset)
-- [Modules](#modules)
-- [Differences From The TIGER Paper](#differences-from-the-tiger-paper)
-- [Experiment Configuration And Results](#experiment-configuration-and-results)
-- [Limitations And Future Work](#limitations-and-future-work)
-- [Citation](#citation)
-- [Acknowledgements](#acknowledgements)
-
-## Project Overview
+## 项目简介
 
 TIGER 来自论文 [Recommender Systems with Generative Retrieval](https://arxiv.org/abs/2305.05065)。它的核心思想是把推荐任务从“对候选物品打分”改写成“生成目标物品的 semantic ID”。semantic ID 是物品的离散语义编号，例如一个物品可以表示为 `[12, 5, 98, 3]`。
 
@@ -43,40 +39,40 @@ TIGER 来自论文 [Recommender Systems with Generative Retrieval](https://arxiv
 - [RQ-VAE 与 semantic ID](docs/rqvae_semantic_id.md)
 - [Beam Search 推理](docs/beam_search.md)
 
-## Core Results
+## 核心实验结果
 
-当前完整实验使用 Amazon Beauty 5-core 全量处理后数据，评估设置为每个用户预测 1 个 next item。模型直接在全部物品空间中生成推荐结果，没有先用候选召回模块做预筛选，因此任务难度高于“候选集内排序”设置。
+当前完整实验使用 Amazon Beauty 5-core 全量处理后数据，评估设置为每个用户预测 1 个 next item。这里不是先召回一小批候选物品再排序，而是让模型直接在全部 12101 个物品中生成推荐结果，因此任务难度高于“候选集内排序”设置。
 
-| Split | HR@5 | NDCG@5 | HR@10 | NDCG@10 | HR@20 | NDCG@20 |
+| 数据划分 | HR@5 | NDCG@5 | HR@10 | NDCG@10 | HR@20 | NDCG@20 |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| Valid | 0.0288 | 0.0182 | 0.0482 | 0.0245 | 0.0732 | 0.0308 |
-| Test | 0.0200 | 0.0126 | 0.0356 | 0.0176 | 0.0557 | 0.0227 |
+| 验证集 | 0.0288 | 0.0182 | 0.0482 | 0.0245 | 0.0732 | 0.0308 |
+| 测试集 | 0.0200 | 0.0126 | 0.0356 | 0.0176 | 0.0557 | 0.0227 |
 
-| Metric | Value |
+| 指标 | 数值 |
 | --- | ---: |
-| Users | 22363 |
-| Items | 12101 |
-| Train samples | 131413 |
-| Valid samples | 22363 |
-| Test samples | 22363 |
-| item2vec item coverage | 12068 / 12101 = 99.73% |
-| Valid target cold-start ratio | 0.23% |
-| Test target cold-start ratio | 0.62% |
+| 用户数 | 22363 |
+| 物品数 | 12101 |
+| 训练样本数 | 131413 |
+| 验证样本数 | 22363 |
+| 测试样本数 | 22363 |
+| item2vec 物品覆盖率 | 12068 / 12101 = 99.73% |
+| 验证集目标物品冷启动比例 | 0.23% |
+| 测试集目标物品冷启动比例 | 0.62% |
 | Beam size / Top-K | 50 / 20 |
-| Avg. valid predictions | 20.0 |
-| Valid prediction rate | 1.0 |
+| 平均有效推荐数 | 20.0 |
+| 有效推荐率 | 1.0 |
 
-## Workflow
+## 项目流程图
 
-### TIGER Principle
+### TIGER 原理图
 
 <img src="assets/tiger_principle.svg" alt="TIGER 生成式推荐原理图" width="100%">
 
-### Project Pipeline
+### 项目实现流程图
 
 <img src="assets/tiger_pipeline.svg" alt="TIGER 最小实现项目流程图" width="100%">
 
-## Quick Start
+## 快速开始
 
 所有命令都需要在项目根目录执行：
 
@@ -109,7 +105,7 @@ python -m tiger_min.tiger.inference --checkpoint data/processed/beauty/tiger_e20
 python -m tiger_min.tiger.inference --checkpoint data/processed/beauty/tiger_e20/tiger.pt --split test --output data/processed/beauty/tiger_e20/eval_test_epoch20.json
 ```
 
-### Smoke Test
+### 小规模流程测试（Smoke Test）
 
 小规模 smoke test 用于快速检查数据流、训练入口和推理入口能否跑通，不用于报告正式指标。
 
@@ -121,19 +117,19 @@ python -m tiger_min.tiger.train_tiger --splits data/processed/beauty_5k/splits.p
 python -m tiger_min.tiger.inference --checkpoint data/processed/beauty_5k/tiger/tiger.pt --splits data/processed/beauty_5k/splits.pt --split valid --output data/processed/beauty_5k/tiger/eval_valid.json --max-batches 5
 ```
 
-## Environment And Dataset
+## 环境与数据集
 
-### Python Environment
+### Python 环境
 
 当前复现实验环境：
 
-| Item | Value |
+| 项目 | 数值 |
 | --- | --- |
 | Python | 3.10.8 |
 | PyTorch | 2.6.0+cu126 |
-| CUDA used by PyTorch | 12.6 |
+| PyTorch 使用的 CUDA | 12.6 |
 | GPU | NVIDIA GeForce RTX 4060 Laptop GPU |
-| VRAM | 8 GB |
+| 显存 | 8 GB |
 | NumPy | 2.1.2 |
 | scikit-learn | 1.7.2 |
 | tqdm | 4.68.3 |
@@ -154,18 +150,18 @@ python -m pip install -r requirements.txt
 python -m pip install torch --index-url https://download.pytorch.org/whl/cu126
 ```
 
-### Dataset
+### 数据集
 
 本项目使用 Amazon Reviews 2014 版本中的 Beauty 5-core 数据：
 
-| Item | Value |
+| 项目 | 内容 |
 | --- | --- |
-| Dataset | Amazon Beauty 5-core |
-| Source | [Amazon product data, Julian McAuley / UCSD](https://cseweb.ucsd.edu/~jmcauley/datasets/amazon/links.html) |
-| File name | `reviews_Beauty_5.json.gz` |
-| Local path | `data/raw/reviews_Beauty_5.json.gz` |
-| Split | leave-one-out by user sequence |
-| Minimum sequence length | 5 |
+| 数据集 | Amazon Beauty 5-core |
+| 来源 | [Amazon product data, Julian McAuley / UCSD](https://cseweb.ucsd.edu/~jmcauley/datasets/amazon/links.html) |
+| 文件名 | `reviews_Beauty_5.json.gz` |
+| 放置目录 | `data/raw/reviews_Beauty_5.json.gz` |
+| 数据划分 | 按用户序列做 leave-one-out |
+| 最小序列长度 | 5 |
 
 数据目录结构：
 
@@ -188,26 +184,18 @@ data/
 
 `data/` 默认不提交 Git。
 
-### Runtime Notes
+## 模块说明
 
-| Stage | Device | Observed / Status |
-| --- | --- | --- |
-| Data preprocessing | CPU | TODO: record wall-clock time |
-| item2vec | CUDA | TODO: record wall-clock time |
-| RQ-VAE | CUDA | TODO: record wall-clock time |
-| TIGER training | CUDA | TODO: record wall-clock time |
-| Beam evaluation | CUDA | Valid about 2-3 minutes, Test about 3 minutes in the latest run |
-
-## Modules
-
-| Module | Description |
+| 模块 | 说明 |
 | --- | --- |
 | [tiger_min/data/adapters.py](tiger_min/data/adapters.py) | 读取 Amazon 原始数据或已处理序列 |
 | [tiger_min/data/splits.py](tiger_min/data/splits.py) | 构建 `history -> target` 样本和 leave-one-out split |
 | [tiger_min/data/build_sequences.py](tiger_min/data/build_sequences.py) | 数据处理入口，生成 `splits.pt` 和 item2vec 序列 |
+| [tiger_min/data/dataset_stats.py](tiger_min/data/dataset_stats.py) | 统计 item2vec 覆盖率、目标物品覆盖率和冷启动比例 |
 | [tiger_min/embedding/dataset.py](tiger_min/embedding/dataset.py) | item2vec 正样本 pair 和负采样数据集 |
 | [tiger_min/embedding/model.py](tiger_min/embedding/model.py) | Skip-Gram Negative Sampling 模型 |
 | [tiger_min/embedding/train_item2vec.py](tiger_min/embedding/train_item2vec.py) | item2vec 训练入口 |
+| [tiger_min/baselines/popular.py](tiger_min/baselines/popular.py) | Popular Baseline 评估入口 |
 | [tiger_min/rqvae/model.py](tiger_min/rqvae/model.py) | 简化 RQ-VAE 和 residual quantizer |
 | [tiger_min/rqvae/semantic_id_dedup.py](tiger_min/rqvae/semantic_id_dedup.py) | semantic ID 去重和 suffix 追加 |
 | [tiger_min/rqvae/train_rqvae.py](tiger_min/rqvae/train_rqvae.py) | RQ-VAE 训练与 semantic ID 导出 |
@@ -217,104 +205,104 @@ data/
 | [tiger_min/tiger/train_tiger.py](tiger_min/tiger/train_tiger.py) | TIGER 训练入口 |
 | [tiger_min/tiger/inference.py](tiger_min/tiger/inference.py) | Beam Search 推理和 HR/NDCG 评估 |
 
-## Differences From The TIGER Paper
+## 与 TIGER 原论文的区别
 
-| Component | TIGER paper | This repository |
+| 模块 | TIGER 原论文 | 本项目 |
 | --- | --- | --- |
-| Item representation | Content embedding from product text | item2vec from user interaction sequences |
-| Item tokenizer | RQ-VAE over content embeddings | Simplified RQ-VAE over item2vec embeddings |
-| Semantic ID uniqueness | Full paper system design | Append suffix after RQ-VAE IDs to ensure unique final semantic IDs |
-| User input | Historical semantic IDs with full paper setup | Historical semantic IDs only |
-| Model implementation | Full training framework and large-scale tuning | Minimal PyTorch `nn.Transformer` implementation |
-| Inference | Generative retrieval | Beam Search with post-generation invalid ID filtering |
-| Goal | Paper-level benchmark | Local reproducible minimal implementation |
+| 物品表示 | 使用商品文本内容向量 | 使用 item2vec 交互向量 |
+| 物品 tokenizer | 对内容向量训练 RQ-VAE | 对 item2vec 向量训练简化 RQ-VAE |
+| semantic ID 唯一性 | 论文完整系统设计 | RQ-VAE code 后追加 suffix，保证最终 ID 唯一 |
+| 用户输入 | 论文完整用户历史 semantic ID 设置 | 当前只使用用户历史 semantic ID |
+| 模型实现 | 完整训练框架和更充分调参 | 基于 PyTorch `nn.Transformer` 的最小实现 |
+| 推理方式 | 生成式检索 | Beam Search 生成后过滤无效 ID |
+| 目标 | 论文级 benchmark | 本地可复现最小实现 |
 
 本项目不声称复现论文完整指标。重点是复现 TIGER 的主干思路和工程闭环。
 
-## Experiment Configuration And Results
+## 实验配置与结果
 
-### Data Statistics
+### 数据统计
 
-| Metric | Value |
+| 指标 | 数值 |
 | --- | ---: |
-| Users | 22363 |
-| Items | 12101 |
-| item2vec interactions | 153776 |
-| Train samples | 131413 |
-| Valid samples | 22363 |
-| Test samples | 22363 |
+| 用户数 | 22363 |
+| 物品数 | 12101 |
+| item2vec 使用的交互数 | 153776 |
+| 训练样本数 | 131413 |
+| 验证样本数 | 22363 |
+| 测试样本数 | 22363 |
 
-### Configuration
+### 实验配置
 
-| Stage | Parameter | Value |
+| 阶段 | 参数 | 数值 |
 | --- | --- | --- |
-| Data | min sequence length | 5 |
-| Data | max history length | 20 |
-| Data | split | leave-one-out |
-| item2vec | embedding dim | 256 |
+| 数据 | 最小序列长度 | 5 |
+| 数据 | 最大历史长度 | 20 |
+| 数据 | 划分方式 | leave-one-out |
+| item2vec | embedding 维度 | 256 |
 | item2vec | window size | 3 |
-| item2vec | negatives per positive | 10 |
+| item2vec | 每个正样本的负样本数 | 10 |
 | item2vec | batch size | 1024 |
-| item2vec | epochs | 15 |
-| item2vec | learning rate | 0.005 |
-| RQ-VAE | latent dim | 128 |
-| RQ-VAE | hidden dim | 256 |
-| RQ-VAE | quantizer layers | 3 |
+| item2vec | epoch | 15 |
+| item2vec | 学习率 | 0.005 |
+| RQ-VAE | latent 维度 | 128 |
+| RQ-VAE | hidden 维度 | 256 |
+| RQ-VAE | 量化层数 | 3 |
 | RQ-VAE | codebook size | 256 |
 | RQ-VAE | batch size | 1024 |
-| RQ-VAE | epochs | 20 |
-| RQ-VAE | learning rate | 0.0005 |
+| RQ-VAE | epoch | 20 |
+| RQ-VAE | 学习率 | 0.0005 |
 | TIGER | d_model | 192 |
-| TIGER | heads | 6 |
-| TIGER | encoder layers | 3 |
-| TIGER | decoder layers | 3 |
-| TIGER | feedforward dim | 512 |
+| TIGER | attention heads | 6 |
+| TIGER | encoder 层数 | 3 |
+| TIGER | decoder 层数 | 3 |
+| TIGER | feedforward 维度 | 512 |
 | TIGER | dropout | 0.15 |
 | TIGER | batch size | 128 |
-| TIGER | epochs | 20 |
-| TIGER | learning rate | 0.0003 |
-| TIGER | grad clip | 1.0 |
+| TIGER | epoch | 20 |
+| TIGER | 学习率 | 0.0003 |
+| TIGER | 梯度裁剪 | 1.0 |
 | Beam Search | beam size | 50 |
 | Beam Search | top_k | 20 |
-| Popular Baseline | ranking rule | global top-K from train-visible item2vec sequences |
-| Common | seed | 42 |
+| Popular Baseline | 排序规则 | 训练可见 item2vec 序列中的全局 Top-K 热门物品 |
+| 通用 | 随机种子 | 42 |
 
 ### item2vec
 
-| Metric | Value |
+| 指标 | 数值 |
 | --- | ---: |
-| Positive pairs | 654300 |
-| Final loss | 0.0748 |
-| Unique items in item2vec sequences | 12068 |
-| Item coverage | 99.73% |
+| 正样本 pair 数 | 654300 |
+| 最终 loss | 0.0748 |
+| item2vec 序列中的唯一物品数 | 12068 |
+| 物品覆盖率 | 99.73% |
 
-### RQ-VAE And Semantic ID
+### RQ-VAE 与语义编号（Semantic ID）
 
-| Metric | Value |
+| 指标 | 数值 |
 | --- | ---: |
-| Best epoch | 5 |
-| Best loss | 0.0036 |
-| Export loss | 0.0036 |
-| Base semantic ID length | 3 |
-| Final semantic ID length | 4 |
-| Unique base semantic IDs | 9969 |
-| Base collision rate before suffix | 31.18% |
-| Max base collision group size | 7 |
-| Final collision rate after suffix | 0 |
+| 最佳 epoch | 5 |
+| 最佳 loss | 0.0036 |
+| 导出时 loss | 0.0036 |
+| 原始 semantic ID 长度 | 3 |
+| 最终 semantic ID 长度 | 4 |
+| 唯一原始 semantic ID 数 | 9969 |
+| 追加 suffix 前的原始冲突率 | 31.18% |
+| 最大原始冲突组大小 | 7 |
+| 追加 suffix 后的最终冲突率 | 0 |
 
 说明：`collision_rate = 0.3118` 是追加 suffix 前的原始 RQ-VAE semantic ID 冲突率。最终用于 TIGER 的 `semantic_ids.pt` 已追加 suffix，因此最终 semantic ID 可以唯一映射回物品。
 
-### TIGER Training
+### TIGER 训练
 
-| Metric | Value |
+| 指标 | 数值 |
 | --- | ---: |
-| Best epoch | 14 |
-| Best valid loss | 1.8335 |
-| Final epoch | 20 |
-| Final train loss | 1.5542 |
-| Final valid loss | 1.8529 |
+| 最佳 epoch | 14 |
+| 最佳验证 loss | 1.8335 |
+| 最终 epoch | 20 |
+| 最终训练 loss | 1.5542 |
+| 最终验证 loss | 1.8529 |
 
-### Ranking Results
+### 推荐指标
 
 Popular Baseline 指标由下面的程序生成：
 
@@ -322,16 +310,16 @@ Popular Baseline 指标由下面的程序生成：
 python -m tiger_min.baselines.popular --processed-dir data/processed/beauty
 ```
 
-| Model | Split | HR@5 | NDCG@5 | HR@10 | NDCG@10 | HR@20 | NDCG@20 |
+| 模型 | 数据划分 | HR@5 | NDCG@5 | HR@10 | NDCG@10 | HR@20 | NDCG@20 |
 | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| TIGER Minimal | Valid | 0.0288 | 0.0182 | 0.0482 | 0.0245 | 0.0732 | 0.0308 |
-| TIGER Minimal | Test | 0.0200 | 0.0126 | 0.0356 | 0.0176 | 0.0557 | 0.0227 |
-| Popular Baseline | Valid | 0.0098 | 0.0059 | 0.0163 | 0.0079 | 0.0265 | 0.0104 |
-| Popular Baseline | Test | 0.0073 | 0.0040 | 0.0114 | 0.0053 | 0.0195 | 0.0073 |
-| ItemKNN | Valid | TODO | TODO | TODO | TODO | TODO | TODO |
-| ItemKNN | Test | TODO | TODO | TODO | TODO | TODO | TODO |
+| TIGER Minimal | 验证集 | 0.0288 | 0.0182 | 0.0482 | 0.0245 | 0.0732 | 0.0308 |
+| TIGER Minimal | 测试集 | 0.0200 | 0.0126 | 0.0356 | 0.0176 | 0.0557 | 0.0227 |
+| Popular Baseline | 验证集 | 0.0098 | 0.0059 | 0.0163 | 0.0079 | 0.0265 | 0.0104 |
+| Popular Baseline | 测试集 | 0.0073 | 0.0040 | 0.0114 | 0.0053 | 0.0195 | 0.0073 |
+| ItemKNN | 验证集 | TODO | TODO | TODO | TODO | TODO | TODO |
+| ItemKNN | 测试集 | TODO | TODO | TODO | TODO | TODO | TODO |
 
-### Beam Search Validity
+### 束搜索（Beam Search）有效预测统计
 
 Beam Search 有效预测统计由 `tiger_min.tiger.inference` 在评估时输出：
 
@@ -339,12 +327,12 @@ Beam Search 有效预测统计由 `tiger_min.tiger.inference` 在评估时输出
 python -m tiger_min.tiger.inference --checkpoint data/processed/beauty/tiger_e20/tiger.pt --split test --output data/processed/beauty/tiger_e20/eval_test_epoch20.json
 ```
 
-| Split | Beam size | Top-K | Avg. valid predictions | Valid prediction rate |
+| 数据划分 | Beam size | Top-K | 平均有效推荐数 | 有效推荐率 |
 | --- | ---: | ---: | ---: | ---: |
-| Valid | 50 | 20 | 20.0 | 1.0 |
-| Test | 50 | 20 | 20.0 | 1.0 |
+| 验证集 | 50 | 20 | 20.0 | 1.0 |
+| 测试集 | 50 | 20 | 20.0 | 1.0 |
 
-### Target Coverage
+### 目标物品覆盖率
 
 item2vec 覆盖率和 valid/test target 冷启动比例由下面的统计程序生成：
 
@@ -352,26 +340,25 @@ item2vec 覆盖率和 valid/test target 冷启动比例由下面的统计程序�
 python -m tiger_min.data.dataset_stats --processed-dir data/processed/beauty
 ```
 
-| Metric | Value |
+| 指标 | 数值 |
 | --- | ---: |
-| Valid target coverage by item2vec sequence items | 99.77% |
-| Test target coverage by item2vec sequence items | 99.38% |
-| Valid cold-start target ratio | 0.23% |
-| Test cold-start target ratio | 0.62% |
+| 验证集目标物品覆盖率 | 99.77% |
+| 测试集目标物品覆盖率 | 99.38% |
+| 验证集目标物品冷启动比例 | 0.23% |
+| 测试集目标物品冷启动比例 | 0.62% |
 
-## Limitations And Future Work
+## 局限性与后续工作
 
 - 当前 Beam Search 只按 semantic ID 位置限制 token 范围，生成完成后再过滤无效 semantic ID；尚未实现基于 Trie 的前缀约束搜索。
 - 当前 item embedding 来自 item2vec 交互序列，没有接入商品标题、类目、品牌等文本信息。
 - 当前已补充 Popular baseline，尚未实现 ItemKNN 等更强序列/共现基线的正式实验结果。
 - 当前没有候选集预筛选，模型直接在全部物品空间中生成 next item，任务难度较高。
-- 当前训练时间只记录了部分阶段，后续需要系统记录每个阶段 wall-clock time、显存占用和吞吐。
 - 后续可以将 item embedding 来源替换为文本 embedding，并比较交互语义和内容语义对 semantic ID 的影响。
 - 后续可以实现 Trie-constrained Beam Search，减少无效 semantic ID 候选。
 
-## Citation
+## 论文引用
 
-If you use the TIGER paper, please cite:
+如果使用 TIGER 原论文，请引用：
 
 ```bibtex
 @article{rajput2023recommender,
@@ -382,8 +369,8 @@ If you use the TIGER paper, please cite:
 }
 ```
 
-## Acknowledgements
+## 致谢
 
-- TIGER paper: [Recommender Systems with Generative Retrieval](https://arxiv.org/abs/2305.05065)
-- Amazon Reviews dataset: [Amazon product data, Julian McAuley / UCSD](https://cseweb.ucsd.edu/~jmcauley/datasets/amazon/links.html)
-- PyTorch: [https://pytorch.org](https://pytorch.org)
+- TIGER 原论文：[Recommender Systems with Generative Retrieval](https://arxiv.org/abs/2305.05065)
+- Amazon Reviews 数据集：[Amazon product data, Julian McAuley / UCSD](https://cseweb.ucsd.edu/~jmcauley/datasets/amazon/links.html)
+- PyTorch 框架：[https://pytorch.org](https://pytorch.org)
