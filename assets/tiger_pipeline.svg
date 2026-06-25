@@ -1,143 +1,105 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="980" viewBox="0 0 1600 980" role="img" aria-labelledby="title desc">
-  <title id="title">TIGER minimal recommendation pipeline</title>
-  <desc id="desc">Pipeline from Amazon Beauty interactions to item2vec, RQ-VAE semantic IDs, Transformer training, beam search inference, and HR/NDCG evaluation.</desc>
+<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="720" viewBox="0 0 1500 720" role="img" aria-labelledby="title desc">
+  <title id="title">TIGER minimal project pipeline</title>
+  <desc id="desc">Implementation pipeline for the minimal TIGER project, from Amazon Beauty data processing to item2vec, RQ-VAE semantic IDs, TIGER training, beam inference, and evaluation.</desc>
   <defs>
-    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
-      <path d="M 0 0 L 10 5 L 0 10 z" fill="#3f5f8f"/>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto">
+      <path d="M0,0 L10,5 L0,10 Z" fill="#345b8c"/>
     </marker>
-    <filter id="shadow" x="-10%" y="-10%" width="120%" height="125%">
-      <feDropShadow dx="0" dy="4" stdDeviation="5" flood-color="#b8c2d8" flood-opacity="0.55"/>
+    <filter id="shadow" x="-8%" y="-8%" width="116%" height="120%">
+      <feDropShadow dx="0" dy="5" stdDeviation="5" flood-color="#b8c4d8" flood-opacity="0.42"/>
     </filter>
     <style>
       .title { font: 700 34px "Microsoft YaHei", "Noto Sans CJK SC", Arial, sans-serif; fill: #172033; }
-      .subtitle { font: 400 18px "Microsoft YaHei", "Noto Sans CJK SC", Arial, sans-serif; fill: #5a667a; }
-      .lane-title { font: 700 23px "Microsoft YaHei", "Noto Sans CJK SC", Arial, sans-serif; fill: #243047; }
-      .box-title { font: 700 21px "Microsoft YaHei", "Noto Sans CJK SC", Arial, sans-serif; fill: #192235; }
-      .box-text { font: 400 17px "Microsoft YaHei", "Noto Sans CJK SC", Arial, sans-serif; fill: #3e4960; }
-      .note { font: 400 16px "Microsoft YaHei", "Noto Sans CJK SC", Arial, sans-serif; fill: #55637a; }
-      .pill { font: 700 15px "Microsoft YaHei", "Noto Sans CJK SC", Arial, sans-serif; fill: #ffffff; }
-      .line { stroke: #3f5f8f; stroke-width: 3; fill: none; marker-end: url(#arrow); }
-      .soft-line { stroke: #7792bd; stroke-width: 2.5; stroke-dasharray: 7 7; fill: none; marker-end: url(#arrow); }
-      .lane { fill: #f4f7fb; stroke: #dce4f0; stroke-width: 1.4; }
-      .box { fill: #ffffff; stroke: #c9d5e7; stroke-width: 1.6; rx: 12; filter: url(#shadow); }
-      .data { fill: #eaf6f0; stroke: #a8d2bd; }
-      .token { fill: #eef3ff; stroke: #b6c8ee; }
-      .model { fill: #fff5e8; stroke: #e4c48c; }
-      .eval { fill: #f6eefb; stroke: #cdb7df; }
-      .chip-blue { fill: #4267a3; }
-      .chip-green { fill: #3b8a67; }
-      .chip-gold { fill: #a96f24; }
-      .chip-purple { fill: #7d5aa6; }
+      .sub { font: 400 18px "Microsoft YaHei", "Noto Sans CJK SC", Arial, sans-serif; fill: #59667c; }
+      .stage-title { font: 700 22px "Microsoft YaHei", "Noto Sans CJK SC", Arial, sans-serif; fill: #25324a; }
+      .box { fill: #fff; stroke: #c8d5e8; stroke-width: 1.6; rx: 12; filter: url(#shadow); }
+      .data { fill: #ecf8f1; stroke: #a7d4ba; }
+      .embed { fill: #edf4ff; stroke: #a8c2eb; }
+      .model { fill: #fff5e7; stroke: #e3c38b; }
+      .eval { fill: #f7effc; stroke: #d0b8e0; }
+      .file { fill: #ffffff; stroke: #cbd7e8; stroke-dasharray: 5 5; filter: none; }
+      .box-title { font: 700 20px "Microsoft YaHei", "Noto Sans CJK SC", Arial, sans-serif; fill: #192235; }
+      .box-text { font: 400 16px "Microsoft YaHei", "Noto Sans CJK SC", Arial, sans-serif; fill: #3e4960; }
+      .file-text { font: 400 15px Consolas, "Microsoft YaHei", monospace; fill: #3e4960; }
+      .line { stroke: #345b8c; stroke-width: 3; fill: none; marker-end: url(#arrow); }
+      .thin { stroke: #7890b2; stroke-width: 2; fill: none; marker-end: url(#arrow); }
+      .note { font: 400 16px "Microsoft YaHei", "Noto Sans CJK SC", Arial, sans-serif; fill: #5b667a; }
     </style>
   </defs>
 
-  <rect width="1600" height="980" fill="#fbfcff"/>
+  <rect width="1500" height="720" fill="#fbfcff"/>
+  <text x="64" y="70" class="title">本项目实现流程</text>
+  <text x="64" y="108" class="sub">每一步输出清晰的中间文件，下一步只依赖这些文件，不依赖上游内部实现</text>
 
-  <text x="70" y="72" class="title">TIGER 生成式推荐最小实现流程</text>
-  <text x="70" y="110" class="subtitle">从用户交互序列构建物品语义编号，再用 Transformer 生成候选物品并评估 Top-K 推荐效果</text>
+  <text x="88" y="160" class="stage-title">1. 数据处理</text>
+  <text x="438" y="160" class="stage-title">2. 物品向量与编号</text>
+  <text x="818" y="160" class="stage-title">3. TIGER 训练</text>
+  <text x="1168" y="160" class="stage-title">4. 推理评估</text>
 
-  <rect x="54" y="150" width="345" height="750" rx="18" class="lane"/>
-  <rect x="432" y="150" width="345" height="750" rx="18" class="lane"/>
-  <rect x="810" y="150" width="345" height="750" rx="18" class="lane"/>
-  <rect x="1188" y="150" width="345" height="750" rx="18" class="lane"/>
+  <rect x="70" y="190" width="250" height="95" class="box data"/>
+  <text x="96" y="226" class="box-title">Amazon Beauty</text>
+  <text x="96" y="254" class="box-text">原始交互数据</text>
 
-  <text x="88" y="194" class="lane-title">1. 数据与划分</text>
-  <text x="466" y="194" class="lane-title">2. 物品语义编号</text>
-  <text x="844" y="194" class="lane-title">3. TIGER 训练</text>
-  <text x="1222" y="194" class="lane-title">4. 推理与评估</text>
+  <rect x="70" y="365" width="250" height="118" class="box data"/>
+  <text x="96" y="401" class="box-title">build_sequences</text>
+  <text x="96" y="429" class="box-text">用户序列排序</text>
+  <text x="96" y="456" class="box-text">leave-one-out 划分</text>
 
-  <rect x="88" y="232" width="276" height="118" class="box data"/>
-  <text x="112" y="270" class="box-title">Amazon Beauty 交互</text>
-  <text x="112" y="305" class="box-text">按用户聚合评论行为</text>
-  <text x="112" y="332" class="box-text">并按时间排序</text>
+  <rect x="390" y="200" width="280" height="92" class="box embed"/>
+  <text x="418" y="236" class="box-title">item2vec</text>
+  <text x="418" y="264" class="box-text">从交互共现学习物品向量</text>
 
-  <rect x="88" y="416" width="276" height="150" class="box data"/>
-  <text x="112" y="454" class="box-title">leave-one-out 划分</text>
-  <text x="112" y="489" class="box-text">训练: 多个 history → target</text>
-  <text x="112" y="516" class="box-text">验证: 倒数第 2 个物品</text>
-  <text x="112" y="543" class="box-text">测试: 最后 1 个物品</text>
+  <rect x="390" y="380" width="280" height="118" class="box embed"/>
+  <text x="418" y="416" class="box-title">简化 RQ-VAE</text>
+  <text x="418" y="444" class="box-text">KMeans 初始化码本</text>
+  <text x="418" y="471" class="box-text">导出唯一 semantic ID</text>
 
-  <rect x="88" y="642" width="276" height="112" class="box data"/>
-  <text x="112" y="680" class="box-title">训练可见历史</text>
-  <text x="112" y="715" class="box-text">只保留 valid/test 之前</text>
-  <text x="112" y="742" class="box-text">的序列训练 item2vec</text>
+  <rect x="760" y="200" width="280" height="92" class="box model"/>
+  <text x="788" y="236" class="box-title">TIGER tokenizer</text>
+  <text x="788" y="264" class="box-text">item ID / semantic ID / token 转换</text>
 
-  <rect x="466" y="232" width="276" height="118" class="box token"/>
-  <text x="490" y="270" class="box-title">item2vec</text>
-  <text x="490" y="305" class="box-text">用交互共现学习</text>
-  <text x="490" y="332" class="box-text">item_embeddings.pt</text>
+  <rect x="760" y="380" width="280" height="118" class="box model"/>
+  <text x="788" y="416" class="box-title">Transformer 训练</text>
+  <text x="788" y="444" class="box-text">history 进入 encoder</text>
+  <text x="788" y="471" class="box-text">target tokens 作为 decoder 标签</text>
 
-  <rect x="466" y="416" width="276" height="150" class="box token"/>
-  <text x="490" y="454" class="box-title">简化 RQ-VAE</text>
-  <text x="490" y="489" class="box-text">Encoder 得到 latent</text>
-  <text x="490" y="516" class="box-text">Residual quantization</text>
-  <text x="490" y="543" class="box-text">Decoder 重建向量</text>
+  <rect x="1130" y="200" width="280" height="92" class="box eval"/>
+  <text x="1158" y="236" class="box-title">beam search</text>
+  <text x="1158" y="264" class="box-text">生成候选 semantic ID</text>
 
-  <rect x="466" y="642" width="276" height="150" class="box token"/>
-  <text x="490" y="680" class="box-title">semantic_ids.pt</text>
-  <text x="490" y="715" class="box-text">每个物品映射为</text>
-  <text x="490" y="742" class="box-text">离散 semantic ID</text>
-  <text x="490" y="769" class="box-text">冲突时追加 suffix 去重</text>
+  <rect x="1130" y="380" width="280" height="118" class="box eval"/>
+  <text x="1158" y="416" class="box-title">Top-K 推荐</text>
+  <text x="1158" y="444" class="box-text">映射回真实物品</text>
+  <text x="1158" y="471" class="box-text">计算 HR@K / NDCG@K</text>
 
-  <rect x="844" y="232" width="276" height="118" class="box model"/>
-  <text x="868" y="270" class="box-title">TIGER tokenizer</text>
-  <text x="868" y="305" class="box-text">item ID ↔ semantic ID</text>
-  <text x="868" y="332" class="box-text">semantic ID ↔ token</text>
+  <path d="M195 285 V356" class="line"/>
+  <path d="M320 424 H382" class="line"/>
+  <path d="M530 292 V371" class="line"/>
+  <path d="M670 439 H752" class="line"/>
+  <path d="M900 292 V371" class="line"/>
+  <path d="M1040 439 H1122" class="line"/>
+  <path d="M1270 292 V371" class="line"/>
 
-  <rect x="844" y="416" width="276" height="150" class="box model"/>
-  <text x="868" y="454" class="box-title">Encoder 输入</text>
-  <text x="868" y="489" class="box-text">用户历史物品</text>
-  <text x="868" y="516" class="box-text">转换为 semantic token</text>
-  <text x="868" y="543" class="box-text">并补齐 batch</text>
+  <rect x="92" y="540" width="230" height="82" class="box file"/>
+  <text x="114" y="570" class="file-text">splits.pt</text>
+  <text x="114" y="596" class="file-text">item2vec_sequences.json</text>
 
-  <rect x="844" y="642" width="276" height="150" class="box model"/>
-  <text x="868" y="680" class="box-title">Decoder 训练目标</text>
-  <text x="868" y="715" class="box-text">输入: BOS + 目标前缀</text>
-  <text x="868" y="742" class="box-text">标签: 目标 token + EOS</text>
-  <text x="868" y="769" class="box-text">损失: 逐位置交叉熵</text>
+  <rect x="398" y="540" width="250" height="82" class="box file"/>
+  <text x="420" y="570" class="file-text">item_embeddings.pt</text>
+  <text x="420" y="596" class="file-text">semantic_ids.pt</text>
 
-  <rect x="1222" y="232" width="276" height="118" class="box eval"/>
-  <text x="1246" y="270" class="box-title">推理输入</text>
-  <text x="1246" y="305" class="box-text">只有用户历史</text>
-  <text x="1246" y="332" class="box-text">没有真实 target</text>
+  <rect x="768" y="540" width="250" height="82" class="box file"/>
+  <text x="790" y="570" class="file-text">tiger.pt</text>
+  <text x="790" y="596" class="file-text">tiger_train_meta.json</text>
 
-  <rect x="1222" y="416" width="276" height="150" class="box eval"/>
-  <text x="1246" y="454" class="box-title">Beam search 生成</text>
-  <text x="1246" y="489" class="box-text">从 BOS 开始自回归</text>
-  <text x="1246" y="516" class="box-text">保留多条高概率路径</text>
-  <text x="1246" y="543" class="box-text">生成候选 semantic ID</text>
+  <rect x="1138" y="540" width="250" height="82" class="box file"/>
+  <text x="1160" y="570" class="file-text">eval_valid.json</text>
+  <text x="1160" y="596" class="file-text">eval_test.json</text>
 
-  <rect x="1222" y="642" width="276" height="150" class="box eval"/>
-  <text x="1246" y="680" class="box-title">推荐与评估</text>
-  <text x="1246" y="715" class="box-text">semantic ID 映射回 item</text>
-  <text x="1246" y="742" class="box-text">过滤无效和重复物品</text>
-  <text x="1246" y="769" class="box-text">计算 HR@K / NDCG@K</text>
+  <path d="M195 483 V532" class="thin"/>
+  <path d="M530 498 V532" class="thin"/>
+  <path d="M900 498 V532" class="thin"/>
+  <path d="M1270 498 V532" class="thin"/>
 
-  <path d="M 226 350 V 410" class="line"/>
-  <path d="M 226 566 V 636" class="line"/>
-  <path d="M 364 700 H 456" class="line"/>
-  <path d="M 604 350 V 410" class="line"/>
-  <path d="M 604 566 V 636" class="line"/>
-  <path d="M 742 710 H 834" class="line"/>
-  <path d="M 982 350 V 410" class="line"/>
-  <path d="M 982 566 V 636" class="line"/>
-  <path d="M 1120 710 H 1212" class="line"/>
-  <path d="M 1360 350 V 410" class="line"/>
-  <path d="M 1360 566 V 636" class="line"/>
-
-  <path d="M 364 488 C 418 488, 414 290, 456 290" class="soft-line"/>
-  <path d="M 364 488 C 550 610, 720 470, 834 470" class="soft-line"/>
-  <path d="M 742 710 C 800 710, 785 290, 834 290" class="soft-line"/>
-  <path d="M 1120 488 C 1178 488, 1168 290, 1212 290" class="soft-line"/>
-
-  <rect x="91" y="825" width="150" height="34" rx="17" class="chip-green"/>
-  <text x="117" y="848" class="pill">数据契约</text>
-  <text x="258" y="848" class="note">所有模块只依赖连续 item ID、history/target 样本和 semantic_ids.pt</text>
-
-  <rect x="678" y="825" width="168" height="34" rx="17" class="chip-blue"/>
-  <text x="702" y="848" class="pill">可替换组件</text>
-  <text x="864" y="848" class="note">item embedding 可以替换为商品文本 embedding；semantic ID 也可以来自外部 RQ-VAE</text>
-
-  <rect x="70" y="922" width="1460" height="1.4" fill="#d8e1ef"/>
-  <text x="70" y="952" class="note">注：本图展示本项目实际实现流程；论文原版 TIGER 的物品向量、训练框架和实验规模更完整。</text>
+  <text x="70" y="670" class="note">说明：图中的虚线边框表示落盘的中间文件。后续模块只读取这些统一文件，因此 item embedding 或 semantic ID 来源可以替换。</text>
 </svg>

@@ -2,7 +2,7 @@
 
 这是对 TIGER 生成式推荐的一版最小实现。项目从 Amazon Beauty 交互数据出发，串起用户序列构建、item2vec 物品向量、简化 RQ-VAE 生成 semantic ID（物品的离散语义编号）、Transformer 训练、beam search 推理和 HR/NDCG 评估。实现重点是把关键数据流和模块边界跑通，实验结果不与论文完整配置直接对齐。
 
-完整流程见 [项目原理图](#3-项目原理图)。
+完整实现流程见 [项目实现流程图](#3-项目实现流程图)。
 
 ## 1. TIGER 原理
 
@@ -25,6 +25,10 @@ TIGER 来自论文 [Recommender Systems with Generative Retrieval](https://arxiv
 4. beam search 保留多条高概率生成路径，再把生成出的 semantic ID 映射回真实物品。
 
 也就是说，模型最终不是直接输出某个物品的分类概率，而是像语言模型生成词一样，逐步生成目标物品的离散语义编号。
+
+TIGER 的工作流程可以概括为下图：
+
+<img src="assets/tiger_principle.svg" alt="TIGER 生成式推荐原理图" width="100%">
 
 ### 1.1 为什么不直接生成原始物品 ID
 
@@ -241,7 +245,7 @@ semantic ID -> 真实物品 ID
 
 推理阶段做了一个简单优化：用户历史只跑一次 encoder，beam search 的每一步复用 encoder memory，只重复运行 decoder。
 
-## 3. 项目原理图
+## 3. 项目实现流程图
 
 下面这张图对应本项目的实际实现流程，不代表论文原版 TIGER 的完整工程配置。
 
