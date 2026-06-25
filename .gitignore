@@ -7,5 +7,7 @@ __pycache__/
 
 /data/
 /tests/
-docs/
+docs/data_contract.md
+docs/interview_notes.md
+docs/step_01_data.md
 configs/
