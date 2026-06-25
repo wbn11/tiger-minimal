@@ -12,9 +12,9 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("--source", choices=["processed", "raw_amazon"], default="raw_amazon")
     parser.add_argument("--input", default="data/raw/reviews_Beauty_5.json.gz")
-    parser.add_argument("--output", default="data/processed/beauty_5k")
+    parser.add_argument("--output", default="data/processed/beauty")
     parser.add_argument("--min-sequence-length", type=int, default=5)
-    parser.add_argument("--max-users", type=int, default=5000)
+    parser.add_argument("--max-users", type=int, default=None)
     parser.add_argument("--max-history-length", type=int, default=20)
     return parser
 
