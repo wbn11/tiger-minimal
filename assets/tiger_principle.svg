@@ -1,96 +1,122 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1500" height="760" viewBox="0 0 1500 760" role="img" aria-labelledby="title desc">
-  <title id="title">TIGER recommendation execution flow</title>
-  <desc id="desc">A simple three-stage TIGER flow: build semantic IDs for items, train a Transformer on history and target semantic tokens, then generate recommendation candidates from user history.</desc>
+  <title id="title">TIGER 原论文核心流程</title>
+  <desc id="desc">TIGER 将物品映射为 semantic ID，并使用 Encoder-Decoder Transformer 根据用户历史生成下一个物品的 semantic ID。</desc>
   <defs>
-    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto">
-      <path d="M0,0 L10,5 L0,10 Z" fill="#365c8d"/>
+    <marker id="arrow-blue" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto">
+      <path d="M0,0 L10,5 L0,10 Z" fill="#2f5fbd"/>
     </marker>
-    <filter id="shadow" x="-8%" y="-8%" width="116%" height="120%">
-      <feDropShadow dx="0" dy="4" stdDeviation="4" flood-color="#bac5d8" flood-opacity="0.4"/>
+    <marker id="arrow-green" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto">
+      <path d="M0,0 L10,5 L0,10 Z" fill="#178553"/>
+    </marker>
+    <filter id="soft-shadow" x="-8%" y="-10%" width="116%" height="124%">
+      <feDropShadow dx="0" dy="5" stdDeviation="5" flood-color="#9eb2cf" flood-opacity="0.28"/>
     </filter>
     <style>
-      .title { font: 700 34px "Microsoft YaHei", "Noto Sans CJK SC", Arial, sans-serif; fill: #172033; }
-      .sub { font: 400 18px "Microsoft YaHei", "Noto Sans CJK SC", Arial, sans-serif; fill: #59667c; }
-      .row-title { font: 700 22px "Microsoft YaHei", "Noto Sans CJK SC", Arial, sans-serif; fill: #25324a; }
-      .box { fill: #fff; stroke: #c7d4e7; stroke-width: 1.6; rx: 12; filter: url(#shadow); }
-      .prep { fill: #edf4ff; stroke: #a8c2eb; }
-      .train { fill: #fff5e7; stroke: #e2c18a; }
-      .infer { fill: #ecf8f1; stroke: #a5d3bb; }
-      .out { fill: #f7effc; stroke: #d0b8e0; }
-      .box-title { font: 700 20px "Microsoft YaHei", "Noto Sans CJK SC", Arial, sans-serif; fill: #192235; }
-      .box-text { font: 400 16px "Microsoft YaHei", "Noto Sans CJK SC", Arial, sans-serif; fill: #3e4960; }
-      .line { stroke: #365c8d; stroke-width: 3; fill: none; marker-end: url(#arrow); }
-      .down { stroke: #7b92b5; stroke-width: 2.8; fill: none; marker-end: url(#arrow); }
-      .note { font: 400 16px "Microsoft YaHei", "Noto Sans CJK SC", Arial, sans-serif; fill: #58657b; }
+      .bg { fill: #f7faff; }
+      .title { font: 700 36px "Microsoft YaHei", "Noto Sans CJK SC", Arial, sans-serif; fill: #14254f; }
+      .subtitle { font: 400 18px "Microsoft YaHei", "Noto Sans CJK SC", Arial, sans-serif; fill: #536176; }
+      .lane-label { font: 700 20px "Microsoft YaHei", "Noto Sans CJK SC", Arial, sans-serif; fill: #ffffff; }
+      .section-title { font: 700 21px "Microsoft YaHei", "Noto Sans CJK SC", Arial, sans-serif; fill: #1d2b42; }
+      .box-title { font: 700 19px "Microsoft YaHei", "Noto Sans CJK SC", Arial, sans-serif; fill: #172033; }
+      .box-text { font: 400 14px "Microsoft YaHei", "Noto Sans CJK SC", Arial, sans-serif; fill: #46556a; }
+      .small { font: 400 13px "Microsoft YaHei", "Noto Sans CJK SC", Arial, sans-serif; fill: #607086; }
+      .token { font: 700 15px Consolas, "Microsoft YaHei", monospace; fill: #2358c7; }
+      .box { fill: #ffffff; stroke: #c6d5ea; stroke-width: 1.8; rx: 12; filter: url(#soft-shadow); }
+      .blue { fill: #eef5ff; stroke: #95b8ec; }
+      .green { fill: #edf9f2; stroke: #94d1ad; }
+      .orange { fill: #fff7e8; stroke: #e4c27d; }
+      .purple { fill: #f7effc; stroke: #ccb2e0; }
+      .line-blue { stroke: #2f5fbd; stroke-width: 3.2; fill: none; marker-end: url(#arrow-blue); }
+      .line-green { stroke: #178553; stroke-width: 3.2; fill: none; marker-end: url(#arrow-green); }
+      .divider { stroke: #d9e2f1; stroke-width: 2; stroke-dasharray: 8 8; }
+      .pill-blue { fill: #2f5fbd; }
+      .pill-green { fill: #178553; }
+      .legend { fill: #ffffff; stroke: #c9d7ea; stroke-width: 1.4; rx: 10; }
     </style>
   </defs>
 
-  <rect width="1500" height="760" fill="#fbfcff"/>
+  <rect width="1500" height="760" class="bg"/>
 
-  <text x="64" y="72" class="title">TIGER 推荐执行流程</text>
-  <text x="64" y="110" class="sub">核心是先把物品变成 semantic ID，再训练模型根据用户历史生成下一个物品的 semantic ID</text>
+  <text x="64" y="68" class="title">TIGER 原论文核心流程</text>
+  <text x="64" y="104" class="subtitle">用离散语义编号（Semantic ID）表示物品，并生成下一个目标物品的 ID 序列</text>
 
-  <text x="84" y="175" class="row-title">1. 物品编号准备</text>
-  <rect x="250" y="140" width="250" height="96" class="box prep"/>
-  <text x="278" y="176" class="box-title">物品向量</text>
-  <text x="278" y="205" class="box-text">文本或交互行为得到 embedding</text>
+  <rect x="64" y="145" width="132" height="42" rx="8" class="pill-blue"/>
+  <text x="91" y="173" class="lane-label">训练阶段</text>
+  <text x="220" y="173" class="section-title">先构建物品语义编号，再训练 Transformer 生成下一个物品</text>
 
-  <rect x="610" y="140" width="250" height="96" class="box prep"/>
-  <text x="638" y="176" class="box-title">RQ-VAE 离散化</text>
-  <text x="638" y="205" class="box-text">把连续向量变成多层 code</text>
+  <rect x="72" y="214" width="220" height="116" class="box blue"/>
+  <text x="102" y="252" class="box-title">物品内容编码</text>
+  <text x="102" y="282" class="box-text">标题、类目等内容</text>
+  <text x="102" y="306" class="box-text">编码为 item embedding</text>
 
-  <rect x="970" y="140" width="280" height="96" class="box prep"/>
-  <text x="998" y="176" class="box-title">semantic ID 映射表</text>
-  <text x="998" y="205" class="box-text">item ID 与 semantic ID 互查</text>
+  <path d="M304 272 H336" class="line-blue"/>
 
-  <path d="M500 188 H602" class="line"/>
-  <path d="M860 188 H962" class="line"/>
+  <rect x="348" y="214" width="250" height="116" class="box orange"/>
+  <text x="378" y="252" class="box-title">RQ-VAE 编号</text>
+  <text x="378" y="282" class="box-text">量化 item embedding</text>
+  <text x="378" y="306" class="box-text">输出 Semantic ID</text>
 
-  <text x="84" y="360" class="row-title">2. 模型训练</text>
-  <rect x="250" y="325" width="250" height="104" class="box train"/>
-  <text x="278" y="361" class="box-title">训练样本</text>
-  <text x="278" y="390" class="box-text">history items</text>
-  <text x="278" y="416" class="box-text">target item</text>
+  <path d="M610 272 H642" class="line-blue"/>
 
-  <rect x="610" y="325" width="250" height="104" class="box train"/>
-  <text x="638" y="361" class="box-title">查表转 token</text>
-  <text x="638" y="390" class="box-text">history → encoder input</text>
-  <text x="638" y="416" class="box-text">target → decoder labels</text>
+  <rect x="654" y="214" width="190" height="116" class="box purple"/>
+  <text x="684" y="252" class="box-title">Tokenizer</text>
+  <text x="684" y="282" class="box-text">加入 BOS / EOS</text>
+  <text x="684" y="306" class="box-text">转为训练 token</text>
 
-  <rect x="970" y="325" width="280" height="104" class="box train"/>
-  <text x="998" y="361" class="box-title">Transformer 学习生成</text>
-  <text x="998" y="390" class="box-text">根据历史 token</text>
-  <text x="998" y="416" class="box-text">预测目标 semantic token</text>
+  <path d="M856 272 H888" class="line-blue"/>
 
-  <path d="M500 377 H602" class="line"/>
-  <path d="M860 377 H962" class="line"/>
-  <path d="M1110 236 V316" class="down"/>
+  <rect x="900" y="214" width="260" height="116" class="box green"/>
+  <text x="930" y="252" class="box-title">Transformer 训练</text>
+  <text x="930" y="282" class="box-text">历史 token 输入</text>
+  <text x="930" y="306" class="box-text">预测目标 token</text>
 
-  <text x="84" y="555" class="row-title">3. 推荐推理</text>
-  <rect x="250" y="520" width="250" height="104" class="box infer"/>
-  <text x="278" y="556" class="box-title">用户历史</text>
-  <text x="278" y="585" class="box-text">只有 history items</text>
-  <text x="278" y="611" class="box-text">没有真实 target</text>
+  <path d="M1172 272 H1204" class="line-blue"/>
 
-  <rect x="610" y="520" width="250" height="104" class="box infer"/>
-  <text x="638" y="556" class="box-title">查表转 token</text>
-  <text x="638" y="585" class="box-text">history items</text>
-  <text x="638" y="611" class="box-text">→ encoder input</text>
+  <rect x="1216" y="214" width="226" height="116" class="box green"/>
+  <text x="1246" y="252" class="box-title">训练目标</text>
+  <text x="1246" y="282" class="box-text">生成下一个物品</text>
+  <text x="1246" y="306" class="box-text">Semantic ID</text>
 
-  <rect x="970" y="520" width="280" height="104" class="box infer"/>
-  <text x="998" y="556" class="box-title">生成候选 semantic ID</text>
-  <text x="998" y="585" class="box-text">从 BOS 开始自回归</text>
-  <text x="998" y="611" class="box-text">beam search 保留多条候选</text>
+  <line x1="64" y1="382" x2="1436" y2="382" class="divider"/>
 
-  <rect x="1290" y="520" width="150" height="104" class="box out"/>
-  <text x="1315" y="556" class="box-title">Top-K</text>
-  <text x="1315" y="585" class="box-text">反查回物品</text>
-  <text x="1315" y="611" class="box-text">输出推荐</text>
+  <rect x="64" y="426" width="132" height="42" rx="8" class="pill-green"/>
+  <text x="91" y="454" class="lane-label">推理阶段</text>
+  <text x="220" y="454" class="section-title">给定用户历史，逐 token 生成候选物品</text>
 
-  <path d="M500 572 H602" class="line"/>
-  <path d="M860 572 H962" class="line"/>
-  <path d="M1250 572 H1282" class="line"/>
-  <path d="M735 429 V511" class="down"/>
+  <rect x="84" y="492" width="205" height="118" class="box green"/>
+  <text x="112" y="530" class="box-title">用户历史序列</text>
+  <text x="112" y="560" class="token">[item1, item2, ...]</text>
+  <text x="112" y="584" class="box-text">查表转为 semantic token</text>
 
-  <text x="64" y="695" class="note">读图方式：semantic ID 映射表只负责查表转换；Transformer 接收的是 token 序列，生成结果再反查回真实物品。</text>
+  <path d="M300 551 H356" class="line-green"/>
+
+  <rect x="372" y="492" width="215" height="118" class="box green"/>
+  <text x="402" y="530" class="box-title">Transformer 编码器</text>
+  <text x="402" y="560" class="box-text">编码用户历史兴趣</text>
+  <text x="402" y="584" class="box-text">形成上下文表示</text>
+
+  <path d="M598 551 H654" class="line-green"/>
+
+  <rect x="670" y="492" width="230" height="118" class="box orange"/>
+  <text x="704" y="530" class="box-title">自回归解码器</text>
+  <text x="704" y="560" class="box-text">从 BOS 开始逐步生成</text>
+  <text x="704" y="584" class="token">BOS → s1 → s2 → EOS</text>
+
+  <path d="M912 551 H968" class="line-green"/>
+
+  <rect x="984" y="492" width="214" height="118" class="box orange"/>
+  <text x="1016" y="530" class="box-title">Beam Search</text>
+  <text x="1016" y="560" class="box-text">保留概率最高的</text>
+  <text x="1016" y="584" class="box-text">多条 semantic ID 候选</text>
+
+  <path d="M1210 551 H1266" class="line-green"/>
+
+  <rect x="1282" y="492" width="154" height="118" class="box purple"/>
+  <text x="1314" y="530" class="box-title">Top-K 推荐</text>
+  <text x="1312" y="560" class="box-text">ID 反查 item</text>
+  <text x="1312" y="584" class="box-text">输出推荐列表</text>
+
+  <rect x="380" y="652" width="740" height="58" class="legend"/>
+  <text x="410" y="676" class="small">关键点：模型生成目标物品的 semantic ID，</text>
+  <text x="410" y="698" class="small">再通过映射表反查回真实 item。</text>
 </svg>

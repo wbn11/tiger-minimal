@@ -4,7 +4,7 @@
 
 本项目基于 PyTorch 从零实现一条 TIGER 风格的生成式推荐流程，覆盖 item2vec 物品向量、简化 RQ-VAE semantic ID、Tokenizer、Encoder-Decoder Transformer、Beam Search 推理和 HR/NDCG 离线评估。
 实验使用 Amazon Beauty 5-core 数据集，处理后包含 22363 个用户、12101 个物品、131413 个训练样本、22363 个验证样本和 22363 个测试样本。
-评估时模型需要直接从全部 12101 个物品中生成下一个物品，没有先通过召回模块缩小候选集；在这个设置下，当前测试集 HR@20 为 0.0557，NDCG@20 为 0.0227。
+当前测试集 HR@20 为 0.0557，NDCG@20 为 0.0227。
 本项目是面向学习和本地复现的非官方最小实现，不追求完全对齐论文原版训练配置或论文指标。
 
 ## 目录
@@ -23,7 +23,7 @@
 
 ## 项目简介
 
-TIGER 来自论文 [Recommender Systems with Generative Retrieval](https://arxiv.org/abs/2305.05065)。它的核心思想是把推荐任务从“对候选物品打分”改写成“生成目标物品的 semantic ID”。semantic ID 是物品的离散语义编号，例如一个物品可以表示为 `[12, 5, 98, 3]`。
+TIGER 来自论文 [Recommender Systems with Generative Retrieval](https://arxiv.org/abs/2305.05065)。它的核心思想是用离散 semantic ID 表示物品，并把 next-item 推荐建模成 semantic ID 序列生成任务。semantic ID 是物品的离散语义编号，例如一个物品可以表示为 `[12, 5, 98, 3]`。
 
 本项目保留 TIGER 的主干执行流程：
 
@@ -41,7 +41,7 @@ TIGER 来自论文 [Recommender Systems with Generative Retrieval](https://arxiv
 
 ## 核心实验结果
 
-当前完整实验使用 Amazon Beauty 5-core 全量处理后数据，评估设置为每个用户预测 1 个 next item。这里不是先召回一小批候选物品再排序，而是让模型直接在全部 12101 个物品中生成推荐结果，因此任务难度高于“候选集内排序”设置。
+当前完整实验使用 Amazon Beauty 5-core 全量处理后数据，评估设置为每个用户预测 1 个 next item。
 
 | 数据划分 | HR@5 | NDCG@5 | HR@10 | NDCG@10 | HR@20 | NDCG@20 |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
@@ -61,6 +61,8 @@ TIGER 来自论文 [Recommender Systems with Generative Retrieval](https://arxiv
 | Beam size / Top-K | 50 / 20 |
 | 平均有效推荐数 | 20.0 |
 | 有效推荐率 | 1.0 |
+
+说明：平均有效推荐数表示每个样本经过 Beam Search、semantic ID 反查和去重过滤后，平均能留下多少个推荐物品；有效推荐率 = 平均有效推荐数 / Top-K，用来检查生成结果是否能填满推荐列表，不表示命中率。
 
 ## 项目流程图
 
@@ -107,7 +109,7 @@ python -m tiger_min.tiger.inference --checkpoint data/processed/beauty/tiger_e20
 
 ### 小规模流程测试（Smoke Test）
 
-小规模 smoke test 用于快速检查数据流、训练入口和推理入口能否跑通，不用于报告正式指标。
+如果想快速跑通流程，可以用小规模数据测试；这类测试只用于检查数据处理、训练和推理入口是否正常，不作为正式实验指标。
 
 ```powershell
 python -m tiger_min.data.build_sequences --max-users 5000 --output data/processed/beauty_5k
@@ -182,7 +184,7 @@ data/
       tiger/
 ```
 
-`data/` 默认不提交 Git。
+`data/` 用于存放本地原始数据和中间结果，需要在本地自行创建。运行前请创建 `data/raw/` 并放入原始数据文件，程序会在 `data/processed/` 下生成处理后的训练文件；该目录默认不提交 Git。
 
 ## 模块说明
 
@@ -221,6 +223,8 @@ data/
 
 ## 实验配置与结果
 
+本节结果使用程序中的默认参数。具体训练配置以各入口文件中的 `argparse` 默认值为准，主要包括 `train_item2vec.py`、`train_rqvae.py`、`train_tiger.py` 和 `inference.py`。
+
 ### 数据统计
 
 | 指标 | 数值 |
@@ -231,41 +235,6 @@ data/
 | 训练样本数 | 131413 |
 | 验证样本数 | 22363 |
 | 测试样本数 | 22363 |
-
-### 实验配置
-
-| 阶段 | 参数 | 数值 |
-| --- | --- | --- |
-| 数据 | 最小序列长度 | 5 |
-| 数据 | 最大历史长度 | 20 |
-| 数据 | 划分方式 | leave-one-out |
-| item2vec | embedding 维度 | 256 |
-| item2vec | window size | 3 |
-| item2vec | 每个正样本的负样本数 | 10 |
-| item2vec | batch size | 1024 |
-| item2vec | epoch | 15 |
-| item2vec | 学习率 | 0.005 |
-| RQ-VAE | latent 维度 | 128 |
-| RQ-VAE | hidden 维度 | 256 |
-| RQ-VAE | 量化层数 | 3 |
-| RQ-VAE | codebook size | 256 |
-| RQ-VAE | batch size | 1024 |
-| RQ-VAE | epoch | 20 |
-| RQ-VAE | 学习率 | 0.0005 |
-| TIGER | d_model | 192 |
-| TIGER | attention heads | 6 |
-| TIGER | encoder 层数 | 3 |
-| TIGER | decoder 层数 | 3 |
-| TIGER | feedforward 维度 | 512 |
-| TIGER | dropout | 0.15 |
-| TIGER | batch size | 128 |
-| TIGER | epoch | 20 |
-| TIGER | 学习率 | 0.0003 |
-| TIGER | 梯度裁剪 | 1.0 |
-| Beam Search | beam size | 50 |
-| Beam Search | top_k | 20 |
-| Popular Baseline | 排序规则 | 训练可见 item2vec 序列中的全局 Top-K 热门物品 |
-| 通用 | 随机种子 | 42 |
 
 ### item2vec
 
@@ -316,8 +285,6 @@ python -m tiger_min.baselines.popular --processed-dir data/processed/beauty
 | TIGER Minimal | 测试集 | 0.0200 | 0.0126 | 0.0356 | 0.0176 | 0.0557 | 0.0227 |
 | Popular Baseline | 验证集 | 0.0098 | 0.0059 | 0.0163 | 0.0079 | 0.0265 | 0.0104 |
 | Popular Baseline | 测试集 | 0.0073 | 0.0040 | 0.0114 | 0.0053 | 0.0195 | 0.0073 |
-| ItemKNN | 验证集 | TODO | TODO | TODO | TODO | TODO | TODO |
-| ItemKNN | 测试集 | TODO | TODO | TODO | TODO | TODO | TODO |
 
 ### 束搜索（Beam Search）有效预测统计
 
@@ -331,6 +298,8 @@ python -m tiger_min.tiger.inference --checkpoint data/processed/beauty/tiger_e20
 | --- | ---: | ---: | ---: | ---: |
 | 验证集 | 50 | 20 | 20.0 | 1.0 |
 | 测试集 | 50 | 20 | 20.0 | 1.0 |
+
+说明：这里的有效推荐指生成的 semantic ID 能够成功反查到真实 item，并通过去重过滤后进入 Top-K 推荐列表；有效推荐率不等于 HR 或 NDCG，只用于检查 Beam Search 输出是否足够完整。
 
 ### 目标物品覆盖率
 
@@ -351,8 +320,6 @@ python -m tiger_min.data.dataset_stats --processed-dir data/processed/beauty
 
 - 当前 Beam Search 只按 semantic ID 位置限制 token 范围，生成完成后再过滤无效 semantic ID；尚未实现基于 Trie 的前缀约束搜索。
 - 当前 item embedding 来自 item2vec 交互序列，没有接入商品标题、类目、品牌等文本信息。
-- 当前已补充 Popular baseline，尚未实现 ItemKNN 等更强序列/共现基线的正式实验结果。
-- 当前没有候选集预筛选，模型直接在全部物品空间中生成 next item，任务难度较高。
 - 后续可以将 item embedding 来源替换为文本 embedding，并比较交互语义和内容语义对 semantic ID 的影响。
 - 后续可以实现 Trie-constrained Beam Search，减少无效 semantic ID 候选。
 

@@ -1,105 +1,104 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="720" viewBox="0 0 1500 720" role="img" aria-labelledby="title desc">
-  <title id="title">TIGER minimal project pipeline</title>
-  <desc id="desc">Implementation pipeline for the minimal TIGER project, from Amazon Beauty data processing to item2vec, RQ-VAE semantic IDs, TIGER training, beam inference, and evaluation.</desc>
+<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="700" viewBox="0 0 1500 700" role="img" aria-labelledby="title desc">
+  <title id="title">TIGER Minimal 项目工作流程</title>
+  <desc id="desc">本项目从 Amazon Beauty 数据处理开始，依次训练 item2vec、RQ-VAE、TIGER Transformer，并使用 Beam Search 做推理评估。</desc>
   <defs>
     <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto">
-      <path d="M0,0 L10,5 L0,10 Z" fill="#345b8c"/>
+      <path d="M0,0 L10,5 L0,10 Z" fill="#2f5fbd"/>
     </marker>
-    <filter id="shadow" x="-8%" y="-8%" width="116%" height="120%">
-      <feDropShadow dx="0" dy="5" stdDeviation="5" flood-color="#b8c4d8" flood-opacity="0.42"/>
+    <filter id="soft-shadow" x="-8%" y="-10%" width="116%" height="124%">
+      <feDropShadow dx="0" dy="5" stdDeviation="5" flood-color="#9eb2cf" flood-opacity="0.28"/>
     </filter>
     <style>
-      .title { font: 700 34px "Microsoft YaHei", "Noto Sans CJK SC", Arial, sans-serif; fill: #172033; }
-      .sub { font: 400 18px "Microsoft YaHei", "Noto Sans CJK SC", Arial, sans-serif; fill: #59667c; }
-      .stage-title { font: 700 22px "Microsoft YaHei", "Noto Sans CJK SC", Arial, sans-serif; fill: #25324a; }
-      .box { fill: #fff; stroke: #c8d5e8; stroke-width: 1.6; rx: 12; filter: url(#shadow); }
-      .data { fill: #ecf8f1; stroke: #a7d4ba; }
-      .embed { fill: #edf4ff; stroke: #a8c2eb; }
-      .model { fill: #fff5e7; stroke: #e3c38b; }
-      .eval { fill: #f7effc; stroke: #d0b8e0; }
-      .file { fill: #ffffff; stroke: #cbd7e8; stroke-dasharray: 5 5; filter: none; }
-      .box-title { font: 700 20px "Microsoft YaHei", "Noto Sans CJK SC", Arial, sans-serif; fill: #192235; }
-      .box-text { font: 400 16px "Microsoft YaHei", "Noto Sans CJK SC", Arial, sans-serif; fill: #3e4960; }
-      .file-text { font: 400 15px Consolas, "Microsoft YaHei", monospace; fill: #3e4960; }
-      .line { stroke: #345b8c; stroke-width: 3; fill: none; marker-end: url(#arrow); }
-      .thin { stroke: #7890b2; stroke-width: 2; fill: none; marker-end: url(#arrow); }
-      .note { font: 400 16px "Microsoft YaHei", "Noto Sans CJK SC", Arial, sans-serif; fill: #5b667a; }
+      .bg { fill: #f7faff; }
+      .title { font: 700 36px "Microsoft YaHei", "Noto Sans CJK SC", Arial, sans-serif; fill: #14254f; }
+      .subtitle { font: 400 18px "Microsoft YaHei", "Noto Sans CJK SC", Arial, sans-serif; fill: #536176; }
+      .box-title { font: 700 19px "Microsoft YaHei", "Noto Sans CJK SC", Arial, sans-serif; fill: #172033; }
+      .box-text { font: 400 14px "Microsoft YaHei", "Noto Sans CJK SC", Arial, sans-serif; fill: #46556a; }
+      .file-text { font: 400 13px Consolas, "Microsoft YaHei", monospace; fill: #415064; }
+      .stage { fill: #ffffff; stroke: #c6d5ea; stroke-width: 1.8; rx: 12; filter: url(#soft-shadow); }
+      .data { fill: #edf9f2; stroke: #94d1ad; }
+      .embed { fill: #eef5ff; stroke: #95b8ec; }
+      .rqvae { fill: #fff7e8; stroke: #e4c27d; }
+      .model { fill: #f7effc; stroke: #ccb2e0; }
+      .eval { fill: #fff2f2; stroke: #e6aaa8; }
+      .file { fill: #ffffff; stroke: #c9d7ea; stroke-width: 1.3; stroke-dasharray: 5 5; rx: 8; }
+      .line { stroke: #2f5fbd; stroke-width: 3.2; fill: none; marker-end: url(#arrow); }
+      .down { stroke: #7c93b4; stroke-width: 2.2; fill: none; marker-end: url(#arrow); }
+      .note { font: 400 13.5px "Microsoft YaHei", "Noto Sans CJK SC", Arial, sans-serif; fill: #607086; }
     </style>
   </defs>
 
-  <rect width="1500" height="720" fill="#fbfcff"/>
-  <text x="64" y="70" class="title">本项目实现流程</text>
-  <text x="64" y="108" class="sub">每一步输出清晰的中间文件，下一步只依赖这些文件，不依赖上游内部实现</text>
+  <rect width="1500" height="700" class="bg"/>
 
-  <text x="88" y="160" class="stage-title">1. 数据处理</text>
-  <text x="438" y="160" class="stage-title">2. 物品向量与编号</text>
-  <text x="818" y="160" class="stage-title">3. TIGER 训练</text>
-  <text x="1168" y="160" class="stage-title">4. 推理评估</text>
+  <text x="64" y="68" class="title">本项目工作流程</text>
+  <text x="64" y="104" class="subtitle">从 Amazon Beauty 交互数据出发，逐步生成物品向量、语义编号、TIGER 模型和离线评估结果</text>
 
-  <rect x="70" y="190" width="250" height="95" class="box data"/>
-  <text x="96" y="226" class="box-title">Amazon Beauty</text>
-  <text x="96" y="254" class="box-text">原始交互数据</text>
+  <rect x="58" y="156" width="216" height="134" class="stage data"/>
+  <text x="88" y="196" class="box-title">1. 数据处理</text>
+  <text x="88" y="226" class="box-text">读取 Beauty 交互数据</text>
+  <text x="88" y="250" class="box-text">统一用户和物品 ID</text>
+  <text x="88" y="274" class="box-text">构造 leave-one-out 划分</text>
 
-  <rect x="70" y="365" width="250" height="118" class="box data"/>
-  <text x="96" y="401" class="box-title">build_sequences</text>
-  <text x="96" y="429" class="box-text">用户序列排序</text>
-  <text x="96" y="456" class="box-text">leave-one-out 划分</text>
+  <path d="M286 223 H336" class="line"/>
 
-  <rect x="390" y="200" width="280" height="92" class="box embed"/>
-  <text x="418" y="236" class="box-title">item2vec</text>
-  <text x="418" y="264" class="box-text">从交互共现学习物品向量</text>
+  <rect x="348" y="156" width="216" height="134" class="stage embed"/>
+  <text x="378" y="196" class="box-title">2. item2vec</text>
+  <text x="378" y="226" class="box-text">构造物品共现 pair</text>
+  <text x="378" y="250" class="box-text">负采样训练 SGNS</text>
+  <text x="378" y="274" class="box-text">得到 item embedding</text>
 
-  <rect x="390" y="380" width="280" height="118" class="box embed"/>
-  <text x="418" y="416" class="box-title">简化 RQ-VAE</text>
-  <text x="418" y="444" class="box-text">KMeans 初始化码本</text>
-  <text x="418" y="471" class="box-text">导出唯一 semantic ID</text>
+  <path d="M576 223 H626" class="line"/>
 
-  <rect x="760" y="200" width="280" height="92" class="box model"/>
-  <text x="788" y="236" class="box-title">TIGER tokenizer</text>
-  <text x="788" y="264" class="box-text">item ID / semantic ID / token 转换</text>
+  <rect x="638" y="156" width="216" height="134" class="stage rqvae"/>
+  <text x="668" y="196" class="box-title">3. 简化 RQ-VAE</text>
+  <text x="668" y="226" class="box-text">KMeans 初始化码本</text>
+  <text x="668" y="250" class="box-text">残差量化重构向量</text>
+  <text x="668" y="274" class="box-text">导出 semantic ID</text>
 
-  <rect x="760" y="380" width="280" height="118" class="box model"/>
-  <text x="788" y="416" class="box-title">Transformer 训练</text>
-  <text x="788" y="444" class="box-text">history 进入 encoder</text>
-  <text x="788" y="471" class="box-text">target tokens 作为 decoder 标签</text>
+  <path d="M866 223 H916" class="line"/>
 
-  <rect x="1130" y="200" width="280" height="92" class="box eval"/>
-  <text x="1158" y="236" class="box-title">beam search</text>
-  <text x="1158" y="264" class="box-text">生成候选 semantic ID</text>
+  <rect x="928" y="156" width="216" height="134" class="stage model"/>
+  <text x="958" y="196" class="box-title">4. TIGER 训练</text>
+  <text x="958" y="226" class="box-text">转换 semantic token</text>
+  <text x="958" y="250" class="box-text">Encoder 编码用户历史</text>
+  <text x="958" y="274" class="box-text">Decoder 预测下一个 token</text>
 
-  <rect x="1130" y="380" width="280" height="118" class="box eval"/>
-  <text x="1158" y="416" class="box-title">Top-K 推荐</text>
-  <text x="1158" y="444" class="box-text">映射回真实物品</text>
-  <text x="1158" y="471" class="box-text">计算 HR@K / NDCG@K</text>
+  <path d="M1156 223 H1206" class="line"/>
 
-  <path d="M195 285 V356" class="line"/>
-  <path d="M320 424 H382" class="line"/>
-  <path d="M530 292 V371" class="line"/>
-  <path d="M670 439 H752" class="line"/>
-  <path d="M900 292 V371" class="line"/>
-  <path d="M1040 439 H1122" class="line"/>
-  <path d="M1270 292 V371" class="line"/>
+  <rect x="1218" y="156" width="216" height="134" class="stage eval"/>
+  <text x="1248" y="196" class="box-title">5. 推理与评估</text>
+  <text x="1248" y="226" class="box-text">Beam Search 生成 ID</text>
+  <text x="1248" y="250" class="box-text">反查 item 并过滤</text>
+  <text x="1248" y="274" class="box-text">计算 HR@K / NDCG@K</text>
 
-  <rect x="92" y="540" width="230" height="82" class="box file"/>
-  <text x="114" y="570" class="file-text">splits.pt</text>
-  <text x="114" y="596" class="file-text">item2vec_sequences.json</text>
+  <path d="M166 300 V348" class="down"/>
+  <path d="M456 300 V348" class="down"/>
+  <path d="M746 300 V348" class="down"/>
+  <path d="M1036 300 V348" class="down"/>
+  <path d="M1326 300 V348" class="down"/>
 
-  <rect x="398" y="540" width="250" height="82" class="box file"/>
-  <text x="420" y="570" class="file-text">item_embeddings.pt</text>
-  <text x="420" y="596" class="file-text">semantic_ids.pt</text>
+  <rect x="58" y="360" width="216" height="96" class="file"/>
+  <text x="82" y="394" class="file-text">splits.pt</text>
+  <text x="82" y="420" class="file-text">item2vec_sequences.json</text>
 
-  <rect x="768" y="540" width="250" height="82" class="box file"/>
-  <text x="790" y="570" class="file-text">tiger.pt</text>
-  <text x="790" y="596" class="file-text">tiger_train_meta.json</text>
+  <rect x="348" y="360" width="216" height="96" class="file"/>
+  <text x="372" y="394" class="file-text">item_embeddings.pt</text>
+  <text x="372" y="420" class="file-text">item_embedding_meta.json</text>
 
-  <rect x="1138" y="540" width="250" height="82" class="box file"/>
-  <text x="1160" y="570" class="file-text">eval_valid.json</text>
-  <text x="1160" y="596" class="file-text">eval_test.json</text>
+  <rect x="638" y="360" width="216" height="96" class="file"/>
+  <text x="662" y="394" class="file-text">semantic_ids.pt</text>
+  <text x="662" y="420" class="file-text">rqvae_meta.json</text>
 
-  <path d="M195 483 V532" class="thin"/>
-  <path d="M530 498 V532" class="thin"/>
-  <path d="M900 498 V532" class="thin"/>
-  <path d="M1270 498 V532" class="thin"/>
+  <rect x="928" y="360" width="216" height="96" class="file"/>
+  <text x="952" y="394" class="file-text">tiger.pt</text>
+  <text x="952" y="420" class="file-text">train_tiger_meta.json</text>
 
-  <text x="70" y="670" class="note">说明：图中的虚线边框表示落盘的中间文件。后续模块只读取这些统一文件，因此 item embedding 或 semantic ID 来源可以替换。</text>
+  <rect x="1218" y="360" width="216" height="96" class="file"/>
+  <text x="1242" y="394" class="file-text">eval_valid.json</text>
+  <text x="1242" y="420" class="file-text">eval_test.json</text>
+
+  <rect x="156" y="520" width="1188" height="92" class="file"/>
+  <text x="188" y="557" class="box-title">实现边界</text>
+  <text x="188" y="584" class="note">本项目使用 item2vec 交互向量替代论文中的商品内容向量；semantic ID 追加 suffix 后保证唯一映射。</text>
+  <text x="188" y="608" class="note">评估时根据用户历史生成 next item，并计算 HR@K / NDCG@K。</text>
 </svg>
