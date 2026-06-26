@@ -1,3 +1,9 @@
+"""序列切分逻辑。
+
+基于用户时间序列构造 next-item 样本：
+训练集使用较早前缀，验证集预测倒数第二个物品，测试集预测最后一个物品。
+"""
+
 from dataclasses import asdict, dataclass
 from pathlib import Path
 
@@ -61,6 +67,7 @@ def build_leave_one_out_splits(
         if len(seq) < min_sequence_length:
             continue
 
+        # Validation predicts the penultimate item; test predicts the last item.
         valid.append(
             NextItemSample(
                 user_id=user_id,
@@ -78,6 +85,7 @@ def build_leave_one_out_splits(
 
         train_end = len(seq) - 2
         if train_all_prefixes:
+            # Use only prefixes before valid/test targets to avoid label leakage.
             target_positions = range(1, train_end)
         else:
             target_positions = [train_end - 1]

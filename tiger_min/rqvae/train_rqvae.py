@@ -1,3 +1,9 @@
+"""训练简化 RQ-VAE semantic ID tokenizer。
+
+读取 item_embeddings.pt，训练 encoder、residual quantizer 和 decoder，
+导出 base_semantic_ids.pt、去重后的 semantic_ids.pt 以及 RQ-VAE checkpoint。
+"""
+
 import argparse
 from pathlib import Path
 
@@ -84,6 +90,7 @@ def train_rqvae(
 
     model.to(device)
     full_item_embeddings = item_embeddings.to(device)
+    # Initialize all residual codebooks before gradient training starts.
     model.initialize_codebooks_with_kmeans(
         full_item_embeddings,
         seed=seed,
@@ -151,6 +158,7 @@ def train_rqvae(
         epoch_metrics.append(metrics)
 
         if metrics["loss"] < best_loss:
+            # Keep the best reconstruction/quantization checkpoint for export.
             best_epoch = epoch + 1
             best_loss = metrics["loss"]
             best_state_dict = {
@@ -173,6 +181,7 @@ def export_semantic_ids(
 
     output = model(item_embeddings.to(device))
     base_semantic_ids = output.code_ids.cpu()
+    # Add a suffix position so every final semantic id maps to exactly one item.
     dedup_result = deduplicate_semantic_ids(base_semantic_ids)
     semantic_ids = dedup_result.semantic_ids.cpu()
 

@@ -1,3 +1,9 @@
+"""TIGER Encoder-Decoder Transformer。
+
+Encoder 读取用户历史 semantic token，Decoder 使用 teacher forcing
+逐步预测目标物品的 semantic ID token 序列。
+"""
+
 from dataclasses import dataclass
 import warnings
 
@@ -97,6 +103,7 @@ class TigerTransformer(nn.Module):
         if labels is not None:
             if labels.shape != decoder_input_ids.shape:
                 raise ValueError("labels must have the same shape as decoder_input_ids.")
+            # Cross entropy is applied at every decoder position.
             loss = F.cross_entropy(
                 logits.reshape(-1, self.vocab_size),
                 labels.reshape(-1),
@@ -122,6 +129,7 @@ class TigerTransformer(nn.Module):
             max_length=self.max_encoder_length,
         )
         memory_key_padding_mask = encoder_attention_mask == 0
+        # Memory is the encoded user history consumed by the decoder.
         memory = self.transformer.encoder(
             src,
             src_key_padding_mask=memory_key_padding_mask,
@@ -144,6 +152,7 @@ class TigerTransformer(nn.Module):
         )
 
         decoder_length = decoder_input_ids.shape[1]
+        # Causal mask prevents the decoder from seeing future target tokens.
         tgt_mask = nn.Transformer.generate_square_subsequent_mask(
             decoder_length,
             device=decoder_input_ids.device,

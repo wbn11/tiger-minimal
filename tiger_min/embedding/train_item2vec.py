@@ -1,3 +1,9 @@
+"""训练 item2vec 物品向量。
+
+读取训练可见的用户物品序列，构造共现正样本并进行负采样训练，
+最终导出 item_embeddings.pt，供后续 RQ-VAE 构建 semantic ID 使用。
+"""
+
 import argparse
 from pathlib import Path
 
@@ -86,6 +92,7 @@ def resolve_num_items(
 def build_positive_contexts_by_center(pairs: list[Pair]) -> dict[int, set[int]]:
     contexts: dict[int, set[int]] = {}
     for center_item, context_item in pairs:
+        # Store all local positives for a center item to avoid sampling them as negatives.
         contexts.setdefault(center_item, set()).add(context_item)
     return contexts
 
@@ -108,6 +115,7 @@ def train_item2vec(
     if not positive_pairs:
         raise ValueError("No positive pairs were generated.")
 
+    # The dataset samples negatives on demand from the center-specific exclusion set.
     positive_contexts_by_center = build_positive_contexts_by_center(positive_pairs)
     dataset = Item2VecDataset(
         positive_pairs=positive_pairs,

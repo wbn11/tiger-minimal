@@ -1,3 +1,9 @@
+"""TIGER semantic ID tokenizer。
+
+把每个 item 的 semantic ID 按位置加 offset 转成 Transformer token，
+同时构造 encoder 历史输入、decoder 输入和训练 labels。
+"""
+
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -57,6 +63,7 @@ class TigerTokenizer:
         self.codebook_size = codebook_size
         self.num_quantizer_layers = num_quantizer_layers
         self.position_vocab_sizes = self._build_position_vocab_sizes()
+        # Position offsets keep codes from different quantizer layers in separate token ranges.
         self.position_offsets = self._build_position_offsets()
         self.vocab_size = self.position_offsets[-1] + self.position_vocab_sizes[-1]
 
@@ -90,9 +97,11 @@ class TigerTokenizer:
         return tokens
 
     def target_to_decoder_input(self, target_item: int) -> list[int]:
+        # Teacher forcing starts from BOS and feeds previous target tokens.
         return [self.special_tokens.bos] + self.item_to_semantic_tokens(target_item)
 
     def target_to_decoder_labels(self, target_item: int) -> list[int]:
+        # Labels are shifted left and end with EOS.
         return self.item_to_semantic_tokens(target_item) + [self.special_tokens.eos]
 
     def encode_sample(self, history: list[int], target_item: int) -> dict[str, list[int]]:
@@ -137,6 +146,7 @@ class TigerTokenizer:
             raise ValueError("RQ code ids must be smaller than codebook_size.")
 
         suffix_codes = self.semantic_ids[:, self.num_quantizer_layers]
+        # The suffix vocab depends on the largest collision group after deduplication.
         suffix_vocab_size = int(torch.max(suffix_codes).item()) + 1
         return [self.codebook_size] * self.num_quantizer_layers + [suffix_vocab_size]
 

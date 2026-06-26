@@ -1,3 +1,9 @@
+"""项目通用工具函数。
+
+集中放置路径创建、JSON 读写、随机种子设置等小工具，
+供数据处理、训练和评估脚本复用。
+"""
+
 import json
 import random
 from pathlib import Path
@@ -40,4 +46,3 @@ def is_contiguous_zero_based(ids: list[int]) -> bool:
     if not ids:
         return True
     return sorted(ids) == list(range(max(ids) + 1))
-

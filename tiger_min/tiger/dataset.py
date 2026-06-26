@@ -1,3 +1,9 @@
+"""TIGER 训练数据集。
+
+把 next-item 样本转换成 Encoder-Decoder Transformer 需要的 token：
+encoder 输入用户历史，decoder 输入 BOS+目标前缀，labels 是目标 token+EOS。
+"""
+
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -67,10 +73,12 @@ def collate_tiger_batch(batch: list[dict]) -> dict[str, torch.LongTensor]:
 
     pad_token_id = 0
 
+    # Encoder histories have variable length, so they are padded within a batch.
     encoder_input_ids = _pad_sequences(
         [example["encoder_input"] for example in batch],
         pad_value=pad_token_id,
     )
+    # Decoder sequences have fixed semantic_id_length + 1, so direct tensorization is safe.
     decoder_input_ids = torch.tensor(
         [example["decoder_input"] for example in batch],
         dtype=torch.long,
@@ -87,6 +95,7 @@ def collate_tiger_batch(batch: list[dict]) -> dict[str, torch.LongTensor]:
             dtype=torch.long,
         ),
         "encoder_input_ids": encoder_input_ids,
+        # 1 means real token, 0 means padding for the Transformer key padding mask.
         "encoder_attention_mask": (encoder_input_ids != pad_token_id).long(),
         "decoder_input_ids": decoder_input_ids,
         "labels": labels,

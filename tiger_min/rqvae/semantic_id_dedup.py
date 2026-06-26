@@ -1,3 +1,9 @@
+"""semantic ID 去重。
+
+RQ-VAE 多层 code 可能出现多个物品共享同一组 semantic ID 的情况。
+这里通过追加 suffix 位保证最终 semantic ID 可以唯一反查到 item。
+"""
+
 from dataclasses import dataclass
 from typing import Any
 
@@ -41,6 +47,7 @@ def deduplicate_semantic_ids(base_semantic_ids: torch.LongTensor) -> SemanticIdD
     suffixes: list[int] = []
 
     for base_id in base_tuples:
+        # The suffix is local to each collided base id: 0, 1, 2, ...
         suffix = next_suffix_by_base_id.get(base_id, 0)
         suffixes.append(suffix)
         next_suffix_by_base_id[base_id] = suffix + 1

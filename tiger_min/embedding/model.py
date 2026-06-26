@@ -1,3 +1,9 @@
+"""item2vec 模型。
+
+使用 Skip-Gram Negative Sampling 训练物品向量：
+让共现窗口内的正样本点积更大，让随机负样本点积更小。
+"""
+
 import torch
 from torch import nn
 from torch.nn import functional as F
@@ -31,9 +37,11 @@ class SkipGramNegSampling(nn.Module):
         positive_vec = self.context_embeddings(positive_contexts)
         negative_vecs = self.context_embeddings(negative_items)
 
+        # Positive pairs should have high dot products.
         positive_scores = torch.sum(center_vec * positive_vec, dim=-1)
         positive_loss = -F.logsigmoid(positive_scores)
 
+        # Negative pairs should have low dot products.
         negative_scores = torch.bmm(negative_vecs, center_vec.unsqueeze(-1)).squeeze(-1)
         negative_loss = -F.logsigmoid(-negative_scores).sum(dim=-1)
 
@@ -41,4 +49,3 @@ class SkipGramNegSampling(nn.Module):
 
     def item_embeddings(self) -> torch.Tensor:
         return self.center_embeddings.weight.detach().clone()
-

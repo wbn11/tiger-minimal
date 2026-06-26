@@ -1,3 +1,9 @@
+"""Popular Baseline 评估入口。
+
+从训练可见 item2vec 序列中统计全局热门物品，直接作为每个用户的 Top-K 推荐，
+用于和 TIGER 生成式推荐结果做简单对照。
+"""
+
 import argparse
 import math
 from collections import Counter
@@ -32,6 +38,7 @@ def build_popular_ranking(
     if top_k <= 0:
         raise ValueError("top_k must be positive.")
 
+    # Popularity is computed only from train-visible sequences.
     counter = Counter(
         item
         for sequence in sequences

@@ -1,3 +1,9 @@
+"""TIGER Beam Search 推理与评估。
+
+加载训练好的 TIGER checkpoint，根据用户历史自回归生成 semantic ID，
+反查为 item 后计算 HR/NDCG，并统计生成无效 semantic ID 的比例。
+"""
+
 import argparse
 import math
 from pathlib import Path
@@ -54,6 +60,7 @@ def build_semantic_id_to_item(tokenizer: TigerTokenizer) -> dict[tuple[int, ...]
         key = tuple(int(code) for code in semantic_id)
         if key in semantic_id_to_item:
             raise ValueError(f"Duplicate semantic id found: {key}")
+        # This table is the final bridge from generated semantic ids back to items.
         semantic_id_to_item[key] = item_id
     return semantic_id_to_item
 
@@ -63,6 +70,7 @@ def generated_tokens_to_item(
     tokenizer: TigerTokenizer,
     semantic_id_to_item: dict[tuple[int, ...], int],
 ) -> int:
+    # Convert position-offset tokens back to raw semantic id codes before lookup.
     semantic_id = tokenizer.semantic_tokens_to_id(token_row)
     return semantic_id_to_item.get(semantic_id, -1)
 
@@ -88,6 +96,7 @@ def batch_beam_search_decode(
     )
     beam_scores = torch.zeros(batch_size, 1, dtype=torch.float, device=device)
 
+    # Encode user histories once; all beams for the same user reuse this memory.
     memory, memory_key_padding_mask = model.encode(
         encoder_input_ids=encoder_input_ids,
         encoder_attention_mask=encoder_attention_mask,
@@ -99,6 +108,7 @@ def batch_beam_search_decode(
         position_offset = tokenizer.position_offsets[position]
         position_vocab_size = tokenizer.position_vocab_sizes[position]
 
+        # Flatten beams into the batch dimension for one vectorized decoder call.
         flat_decoder_input_ids = beam_tokens.reshape(
             batch_size * current_beam_size,
             current_length,
@@ -130,6 +140,7 @@ def batch_beam_search_decode(
         candidate_scores = beam_scores.unsqueeze(-1) + log_probs
         candidate_scores = candidate_scores.reshape(batch_size, -1)
 
+        # Keep the best paths across all previous beams and next-token choices.
         next_beam_size = min(beam_size, candidate_scores.shape[1])
         top_scores, top_indices = torch.topk(
             candidate_scores,
@@ -171,6 +182,7 @@ def beam_tokens_to_ranked_items(
             semantic_id_to_item=semantic_id_to_item,
         )
         if item_id < 0:
+            # Invalid ids are generated token paths that do not map to any item.
             invalid_semantic_id_count += 1
             continue
         if item_id in seen_items:

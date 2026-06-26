@@ -1,3 +1,9 @@
+"""item2vec 训练数据集。
+
+从用户物品序列中构造窗口共现正样本，并为每个正样本随机采样负物品，
+供 Skip-Gram Negative Sampling 模型训练 item embedding。
+"""
+
 import random
 from collections.abc import Iterable
 
@@ -52,6 +58,7 @@ def sample_negative_items(
     excluded = set(positive_contexts)
     excluded.add(center_item)
 
+    # Exclude known positive contexts so sampled negatives are not local positives.
     candidates = [item_id for item_id in range(num_items) if item_id not in excluded]
     if len(candidates) < num_negatives:
         raise ValueError("Not enough candidate items to sample negatives.")
@@ -88,6 +95,7 @@ class Item2VecDataset(Dataset):
 
     def __getitem__(self, index: int) -> dict[str, torch.LongTensor]:
         center_item, positive_context = self.positive_pairs[index]
+        # Negatives are sampled lazily so each epoch can see fresh random examples.
         negative_items = sample_negative_items(
             center_item=center_item,
             positive_contexts=self.positive_contexts_by_center[center_item],

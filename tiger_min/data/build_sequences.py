@@ -1,3 +1,9 @@
+"""构建 TIGER 训练所需的数据文件。
+
+读取 Amazon 原始交互或已处理序列，统一 user/item 整数编号，
+生成 item2vec 可见训练序列、leave-one-out splits 和数据统计元信息。
+"""
+
 import argparse
 from pathlib import Path
 
@@ -28,6 +34,7 @@ def save_corpus(corpus: SequenceCorpus, processed_dir: str | Path) -> None:
     processed = Path(processed_dir)
     processed.mkdir(parents=True, exist_ok=True)
     item2vec_sequences = build_item2vec_sequences(corpus.sequences)
+    # item2vec only sees training-visible histories, not valid/test labels.
     save_json(item2vec_sequences, processed / "item2vec_sequences.json")
     save_json(corpus.user2id, processed / "user2id.json")
     save_json(corpus.item2id, processed / "item2id.json")

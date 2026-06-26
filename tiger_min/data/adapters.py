@@ -1,3 +1,9 @@
+"""数据适配器。
+
+把不同来源的数据统一转换为 SequenceCorpus：
+用户序列使用连续整数 item id，后续 split、item2vec 和 TIGER 都只依赖这个统一格式。
+"""
+
 import gzip
 import json
 from abc import ABC, abstractmethod
@@ -57,6 +63,7 @@ class RawAmazonAdapter(SequenceAdapter):
             raise FileNotFoundError(f"Raw Amazon file not found: {self.raw_path}")
 
         events_by_user: dict[str, list[tuple[int, str]]] = {}
+        # Group raw review events by user before sorting each sequence by time.
         with gzip.open(self.raw_path, "rt", encoding="utf-8") as f:
             for line in f:
                 if not line.strip():
@@ -80,6 +87,7 @@ class RawAmazonAdapter(SequenceAdapter):
             user2id[user_key] = len(user2id)
             sequence: list[int] = []
             for item_key in item_keys:
+                # Assign contiguous item ids so embeddings and tensors can index directly.
                 if item_key not in item2id:
                     item2id[item_key] = len(item2id)
                 sequence.append(item2id[item_key])
@@ -182,4 +190,3 @@ class PrecomputedSemanticIdAdapter(SemanticIdAdapter):
         if tensor.ndim != 2:
             raise ValueError("semantic_ids must be a 2D tensor: [num_items, sem_id_len].")
         return tensor
-

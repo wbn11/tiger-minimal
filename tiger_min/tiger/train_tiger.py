@@ -1,3 +1,9 @@
+"""训练 TIGER 生成式推荐模型。
+
+读取 splits.pt 和 semantic_ids.pt，构造 Encoder-Decoder Transformer 训练样本，
+使用验证集 loss 选择最佳 checkpoint。
+"""
+
 import argparse
 from pathlib import Path
 
@@ -48,6 +54,7 @@ def infer_max_encoder_length(datasets: TigerDatasets) -> int:
             max_history_items,
             max(len(sample.history) for sample in dataset.samples),
         )
+    # Each history item expands to semantic_id_length tokens.
     return max_history_items * tokenizer.semantic_id_length
 
 
@@ -93,6 +100,7 @@ def train_one_epoch(
             break
 
         batch = move_batch_to_device(batch, device)
+        # Decoder input is BOS + target prefix; labels are target tokens + EOS.
         output = model(
             encoder_input_ids=batch["encoder_input_ids"],
             encoder_attention_mask=batch["encoder_attention_mask"],
@@ -265,6 +273,7 @@ def main() -> None:
         print(metrics)
 
         if valid_loss < best_valid_loss:
+            # Save the best validation checkpoint instead of the last epoch.
             best_epoch = epoch
             best_valid_loss = valid_loss
             best_state_dict = {

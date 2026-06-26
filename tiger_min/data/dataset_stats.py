@@ -1,3 +1,9 @@
+"""统计数据覆盖率。
+
+读取处理后的 splits 和 item2vec 训练序列，统计训练可见物品覆盖率、
+验证/测试目标物品覆盖率，以及冷启动目标比例。
+"""
+
 import argparse
 from pathlib import Path
 
@@ -23,6 +29,7 @@ def load_item2vec_sequences(processed_dir: str | Path) -> list[list[int]]:
 def target_coverage(samples, train_visible_items: set[int]) -> float:
     if not samples:
         return 0.0
+    # A covered target appeared in the training-visible item2vec sequences.
     covered = sum(int(sample.target) in train_visible_items for sample in samples)
     return covered / len(samples)
 

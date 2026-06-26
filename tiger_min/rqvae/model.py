@@ -1,3 +1,9 @@
+"""简化 RQ-VAE 模型。
+
+先把 item embedding 编码到 latent space，再用多层 residual quantizer 离散化为 code，
+最后解码重构原始向量，使 semantic ID 尽量保留物品相似性。
+"""
+
 from dataclasses import dataclass
 import os
 import warnings
@@ -61,6 +67,7 @@ def fit_kmeans_codebook(
         raise ValueError("codebook_size cannot be larger than number of vectors.")
 
     os.environ.setdefault("LOKY_MAX_CPU_COUNT", "1")
+    # scikit-learn runs on CPU NumPy arrays; centroids are copied back to torch.
     vectors_np = vectors.detach().cpu().numpy()
     kmeans = KMeans(
         n_clusters=codebook_size,
@@ -183,6 +190,7 @@ class VectorQuantizer(nn.Module):
             max_iter=max_iter,
             n_init=n_init,
         )
+        # KMeans provides a stable starting point for the learnable codebook.
         self.codebook.weight.copy_(result.centroids)
         return result.assignments
 
@@ -194,10 +202,12 @@ class VectorQuantizer(nn.Module):
                 f"Expected latent dimension {self.embedding_dim}, got {latents.shape[1]}."
             )
 
+        # Choose the nearest codebook entry for each latent vector.
         distances = self._squared_l2_distance(latents, self.codebook.weight)
         code_ids = torch.argmin(distances, dim=1)
         quantized = self.codebook(code_ids)
 
+        # Codebook moves toward latents; commitment keeps latents close to chosen codes.
         codebook_loss = F.mse_loss(quantized, latents.detach())
         commitment_loss = self.commitment_weight * F.mse_loss(
             latents,
@@ -205,6 +215,7 @@ class VectorQuantizer(nn.Module):
         )
         loss = codebook_loss + commitment_loss
 
+        # Straight-through estimator: forward uses quantized, backward updates encoder.
         quantized_st = latents + (quantized - latents).detach()
         return QuantizerOutput(
             quantized=quantized_st,
@@ -263,6 +274,7 @@ class ResidualQuantizer(nn.Module):
         code_ids_by_layer: list[torch.LongTensor] = []
 
         for layer_index, layer in enumerate(self.layers):
+            # Each codebook is initialized on the residual left by previous layers.
             layer.initialize_codebook_with_kmeans(
                 residual,
                 seed=seed + layer_index,
@@ -292,6 +304,7 @@ class ResidualQuantizer(nn.Module):
             total_loss = total_loss + output.loss
             total_codebook_loss = total_codebook_loss + output.codebook_loss
             total_commitment_loss = total_commitment_loss + output.commitment_loss
+            # Later layers model only what previous codebooks failed to reconstruct.
             residual = residual - output.quantized.detach()
 
         return ResidualQuantizerOutput(
@@ -410,6 +423,7 @@ class RqvaeModel(nn.Module):
         was_training = self.training
         self.eval()
 
+        # Disable dropout during KMeans initialization so codebooks see stable latents.
         latents = self.encoder(item_embeddings)
         code_ids = self.quantizer.initialize_codebooks_with_kmeans(
             latents=latents,
@@ -427,6 +441,7 @@ class RqvaeModel(nn.Module):
         quantizer_output = self.quantizer(latents)
         reconstructed = self.decoder(quantizer_output.quantized)
 
+        # Reconstruction keeps the discrete codes tied to the original item embedding space.
         reconstruction_loss = self.reconstruction_weight * F.mse_loss(
             reconstructed,
             item_embeddings,
