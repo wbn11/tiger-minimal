@@ -60,9 +60,10 @@ TIGER 来自论文 [Recommender Systems with Generative Retrieval](https://arxiv
 | 测试集目标物品冷启动比例 | 0.62% |
 | Beam size / Top-K | 50 / 20 |
 | 平均有效推荐数 | 20.0 |
-| 有效推荐率 | 1.0 |
+| 验证集无效码率 | 0.20% |
+| 测试集无效码率 | 0.17% |
 
-说明：平均有效推荐数表示每个样本经过 Beam Search、semantic ID 反查和去重过滤后，平均能留下多少个推荐物品；有效推荐率 = 平均有效推荐数 / Top-K，用来检查生成结果是否能填满推荐列表，不表示命中率。
+说明：平均有效推荐数表示每个样本经过 Beam Search、semantic ID 反查和去重过滤后，平均能留下多少个推荐物品；无效码率表示 Beam Search 生成的 semantic ID 中无法反查到真实 item 的比例。
 
 ## 项目流程图
 
@@ -286,20 +287,20 @@ python -m tiger_min.baselines.popular --processed-dir data/processed/beauty
 | Popular Baseline | 验证集 | 0.0098 | 0.0059 | 0.0163 | 0.0079 | 0.0265 | 0.0104 |
 | Popular Baseline | 测试集 | 0.0073 | 0.0040 | 0.0114 | 0.0053 | 0.0195 | 0.0073 |
 
-### 束搜索（Beam Search）有效预测统计
+### 束搜索（Beam Search）无效码统计
 
-Beam Search 有效预测统计由 `tiger_min.tiger.inference` 在评估时输出：
+Beam Search 无效码统计由 `tiger_min.tiger.inference` 在评估时输出：
 
 ```powershell
 python -m tiger_min.tiger.inference --checkpoint data/processed/beauty/tiger_e20/tiger.pt --split test --output data/processed/beauty/tiger_e20/eval_test_epoch20.json
 ```
 
-| 数据划分 | Beam size | Top-K | 平均有效推荐数 | 有效推荐率 |
-| --- | ---: | ---: | ---: | ---: |
-| 验证集 | 50 | 20 | 20.0 | 1.0 |
-| 测试集 | 50 | 20 | 20.0 | 1.0 |
+| 数据划分 | Beam size | Top-K | 平均有效推荐数 | 生成 semantic ID 数 | 无效 semantic ID 数 | 无效码率 |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| 验证集 | 50 | 20 | 20.0 | 1118150 | 2291 | 0.20% |
+| 测试集 | 50 | 20 | 20.0 | 1118150 | 1902 | 0.17% |
 
-说明：这里的有效推荐指生成的 semantic ID 能够成功反查到真实 item，并通过去重过滤后进入 Top-K 推荐列表；有效推荐率不等于 HR 或 NDCG，只用于检查 Beam Search 输出是否足够完整。
+说明：无效 semantic ID 指 Beam Search 生成后无法在 `semantic_id -> item` 映射表中反查到真实物品的 ID 序列；无效码率 = 无效 semantic ID 数 / 生成 semantic ID 总数。
 
 ### 目标物品覆盖率
 

@@ -159,9 +159,10 @@ def beam_tokens_to_ranked_items(
     tokenizer: TigerTokenizer,
     semantic_id_to_item: dict[tuple[int, ...], int],
     top_k: int,
-) -> list[int]:
+) -> tuple[list[int], int]:
     ranked_items: list[int] = []
     seen_items: set[int] = set()
+    invalid_semantic_id_count = 0
 
     for tokens, _ in beams:
         item_id = generated_tokens_to_item(
@@ -169,14 +170,16 @@ def beam_tokens_to_ranked_items(
             tokenizer=tokenizer,
             semantic_id_to_item=semantic_id_to_item,
         )
-        if item_id < 0 or item_id in seen_items:
+        if item_id < 0:
+            invalid_semantic_id_count += 1
             continue
-        ranked_items.append(item_id)
+        if item_id in seen_items:
+            continue
         seen_items.add(item_id)
-        if len(ranked_items) >= top_k:
-            break
+        if len(ranked_items) < top_k:
+            ranked_items.append(item_id)
 
-    return ranked_items
+    return ranked_items, invalid_semantic_id_count
 
 
 def update_ranking_metrics(
@@ -212,6 +215,8 @@ def evaluate_beam_ranking(
     metric_sums.update({f"ndcg@{k}": 0.0 for k in cutoffs})
     total_examples = 0
     valid_prediction_total = 0
+    generated_semantic_id_total = 0
+    invalid_semantic_id_total = 0
 
     progress = tqdm(dataloader, desc="tiger beam eval")
     for step, batch in enumerate(progress, start=1):
@@ -238,7 +243,7 @@ def evaluate_beam_ranking(
                 )
                 for beam_index in range(generated_tokens.shape[1])
             ]
-            ranked_items = beam_tokens_to_ranked_items(
+            ranked_items, invalid_semantic_id_count = beam_tokens_to_ranked_items(
                 beams=beams,
                 tokenizer=tokenizer,
                 semantic_id_to_item=semantic_id_to_item,
@@ -246,6 +251,8 @@ def evaluate_beam_ranking(
             )
             total_examples += 1
             valid_prediction_total += len(ranked_items)
+            generated_semantic_id_total += len(beams)
+            invalid_semantic_id_total += invalid_semantic_id_count
             update_ranking_metrics(
                 ranked_items=ranked_items,
                 target_item=int(target_item),
@@ -258,7 +265,8 @@ def evaluate_beam_ranking(
             **{
                 f"hr@{display_k}": metric_sums[f"hr@{display_k}"]
                 / max(1, total_examples),
-                "valid": valid_prediction_total / max(1, total_examples * top_k),
+                "invalid": invalid_semantic_id_total
+                / max(1, generated_semantic_id_total),
             }
         )
 
@@ -267,7 +275,10 @@ def evaluate_beam_ranking(
         "beam_size": beam_size,
         "top_k": top_k,
         "avg_valid_predictions": valid_prediction_total / max(1, total_examples),
-        "valid_prediction_rate": valid_prediction_total / max(1, total_examples * top_k),
+        "generated_semantic_ids": generated_semantic_id_total,
+        "invalid_semantic_ids": invalid_semantic_id_total,
+        "invalid_semantic_id_rate": invalid_semantic_id_total
+        / max(1, generated_semantic_id_total),
     }
     for key, value in metric_sums.items():
         metrics[key] = value / max(1, total_examples)

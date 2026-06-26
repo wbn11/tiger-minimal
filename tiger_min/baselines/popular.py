@@ -65,7 +65,6 @@ def evaluate_ranking(
         "num_examples": num_examples,
         "top_k": top_k,
         "avg_valid_predictions": len(ranked_items[:top_k]),
-        "valid_prediction_rate": len(ranked_items[:top_k]) / top_k,
     }
     for key, value in metric_sums.items():
         metrics[key] = value / max(1, num_examples)
