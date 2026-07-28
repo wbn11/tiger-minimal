@@ -8,9 +8,11 @@ TIGER 推理阶段没有真实 target。模型只能根据用户历史，从 `BO
 
 Beam Search 会在每一步保留多条高概率路径。例如 `beam_size=50` 时，模型每生成一个 semantic token 都保留累计概率最高的 50 条候选序列。生成完成后，再把候选 semantic ID 映射回真实 item ID，得到 Top-K 推荐。
 
+普通 Beam Search 虽然能限制每个位置的 token 范围，但不同位置的合法 token 任意组合后，不一定对应真实物品。为此，本项目增加 Trie 前缀约束，只扩展能够组成真实 semantic ID 的路径。
+
 ## 本项目实现
 
-当前实现位于 [tiger_min/tiger/inference.py](../tiger_min/tiger/inference.py)。
+Trie 位于 [tiger_min/tiger/trie.py](../tiger_min/tiger/trie.py)，批量解码和评估位于 [tiger_min/tiger/inference.py](../tiger_min/tiger/inference.py)。
 
 推理流程：
 
@@ -19,10 +21,12 @@ history items
 -> tokenizer converts history to encoder tokens
 -> Transformer encoder runs once
 -> decoder starts from BOS
--> beam search generates semantic tokens position by position
+-> query Trie with every generated prefix
+-> mask tokens that cannot continue to a real item
+-> beam search keeps the highest-scoring valid paths
 -> semantic ID candidates
 -> map back to item IDs
--> filter invalid / duplicate items
+-> remove duplicate items
 -> Top-K recommendations
 ```
 
@@ -43,12 +47,27 @@ position 2: codebook offset 3 + 2 * codebook_size
 suffix:     final suffix offset
 ```
 
-因此推理时每一步只在当前位置允许的 token 区间内取 top candidates。
+因此推理时每一步先截取当前位置对应的 token 区间，再叠加 Trie 的前缀约束。
 
-## 当前局限
+## Trie 前缀约束
 
-当前 Beam Search 只做位置级 token 范围限制，生成完成后再过滤无效 semantic ID。它还没有实现基于 Trie 的前缀约束搜索。
+构建 Trie 时，将每个真实物品的完整 semantic token 序列依次插入前缀树。例如存在：
 
-Trie-constrained Beam Search 可以在生成每一层 code 时根据已经生成的前缀限制下一步 token，只探索真实存在的 semantic ID 前缀。这样通常能减少无效候选，提高 beam 利用率。
+```text
+[15, 304, 522, 771]
+[15, 304, 540, 772]
+```
 
-这是后续优化方向之一。
+那么空前缀只能选择 `15`，前缀 `[15]` 只能选择 `304`，前缀 `[15, 304]` 只能选择 `522` 或 `540`。模型仍然负责给合法 token 计算概率，Trie 只负责排除不可能映射到真实物品的路径。
+
+每一轮解码流程如下：
+
+1. Decoder 根据用户历史和当前生成前缀输出下一 token 的 logits。
+2. 根据前缀查询 Trie，得到允许的下一 token 集合。
+3. 将其他 token 的 logits 设为负无穷。
+4. 对合法候选计算累计对数概率并执行 `topk`。
+5. 重复上述过程，直到生成完整 semantic ID。
+
+## 当前实现取舍
+
+当前实现会在每轮解码时为 batch 中的 beam 动态构造合法 token mask，逻辑直观且便于检查。后续可以把 Trie 状态转移预编码成张量，进一步降低大 beam 推理时的 CPU 调度开销。

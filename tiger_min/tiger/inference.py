@@ -1,7 +1,7 @@
-"""TIGER Beam Search 推理与评估。
+"""TIGER Trie 约束 Beam Search 推理与评估。
 
 加载训练好的 TIGER checkpoint，根据用户历史自回归生成 semantic ID，
-反查为 item 后计算 HR/NDCG，并统计生成无效 semantic ID 的比例。
+通过前缀约束保证生成路径对应真实 item，再计算 HR/NDCG 和无效码率。
 """
 
 import argparse
@@ -16,11 +16,14 @@ from tiger_min.data.splits import load_splits
 from tiger_min.tiger.dataset import TigerNextItemDataset, collate_tiger_batch
 from tiger_min.tiger.model import TigerTransformer
 from tiger_min.tiger.tokenizer import TigerTokenizer
+from tiger_min.tiger.trie import SemanticIdTrie
 from tiger_min.utils import save_json
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description="Run minimal TIGER beam inference.")
+    parser = argparse.ArgumentParser(
+        description="Run Trie-constrained TIGER beam inference."
+    )
     parser.add_argument("--checkpoint", default="data/processed/beauty/tiger/tiger.pt")
     parser.add_argument("--splits", default="data/processed/beauty/splits.pt")
     parser.add_argument("--split", choices=["valid", "test"], default="valid")
@@ -79,6 +82,7 @@ def generated_tokens_to_item(
 def batch_beam_search_decode(
     model: TigerTransformer,
     tokenizer: TigerTokenizer,
+    semantic_id_trie: SemanticIdTrie,
     encoder_input_ids: torch.LongTensor,
     encoder_attention_mask: torch.LongTensor,
     beam_size: int,
@@ -132,6 +136,21 @@ def batch_beam_search_decode(
             -1,
             position_offset : position_offset + position_vocab_size,
         ]
+
+        # Mask paths that cannot be completed into any real item semantic ID.
+        flat_prefixes = flat_decoder_input_ids[:, 1:].detach().cpu().tolist()
+        valid_token_mask = torch.zeros(
+            (len(flat_prefixes), position_vocab_size),
+            dtype=torch.bool,
+        )
+        for row_index, prefix in enumerate(flat_prefixes):
+            allowed_tokens = semantic_id_trie.allowed_next_tokens(tuple(prefix))
+            if not allowed_tokens:
+                raise RuntimeError(f"Trie contains no continuation for prefix: {prefix}")
+            local_token_ids = [token - position_offset for token in allowed_tokens]
+            valid_token_mask[row_index, local_token_ids] = True
+        logits = logits.masked_fill(~valid_token_mask.to(device), float("-inf"))
+
         log_probs = torch.log_softmax(logits, dim=-1).reshape(
             batch_size,
             current_beam_size,
@@ -141,7 +160,12 @@ def batch_beam_search_decode(
         candidate_scores = candidate_scores.reshape(batch_size, -1)
 
         # Keep the best paths across all previous beams and next-token choices.
-        next_beam_size = min(beam_size, candidate_scores.shape[1])
+        min_valid_candidates = int(
+            torch.isfinite(candidate_scores).sum(dim=1).min().item()
+        )
+        if min_valid_candidates == 0:
+            raise RuntimeError("Trie-constrained decoding produced no valid candidate.")
+        next_beam_size = min(beam_size, min_valid_candidates)
         top_scores, top_indices = torch.topk(
             candidate_scores,
             k=next_beam_size,
@@ -222,6 +246,7 @@ def evaluate_beam_ranking(
         raise ValueError("beam_size must be greater than or equal to top_k.")
 
     semantic_id_to_item = build_semantic_id_to_item(tokenizer)
+    semantic_id_trie = SemanticIdTrie(tokenizer)
     cutoffs = [k for k in [1, 5, 10, 20] if k <= top_k]
     metric_sums = {f"hr@{k}": 0.0 for k in cutoffs}
     metric_sums.update({f"ndcg@{k}": 0.0 for k in cutoffs})
@@ -242,6 +267,7 @@ def evaluate_beam_ranking(
         generated_tokens, beam_scores = batch_beam_search_decode(
             model=model,
             tokenizer=tokenizer,
+            semantic_id_trie=semantic_id_trie,
             encoder_input_ids=encoder_input_ids,
             encoder_attention_mask=encoder_attention_mask,
             beam_size=beam_size,
@@ -337,7 +363,7 @@ def main() -> None:
     result = {
         "checkpoint_path": str(args.checkpoint),
         "split": args.split,
-        "decode": "beam",
+        "decode": "trie_constrained_beam",
         "best_epoch": checkpoint.get("best_epoch"),
         "best_valid_loss": checkpoint.get("best_valid_loss"),
         "metrics": metrics,

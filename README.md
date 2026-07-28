@@ -2,9 +2,9 @@
 
 **基于 PyTorch 的 TIGER 风格生成式推荐复现项目**
 
-本项目基于 PyTorch 从零实现一条 TIGER 风格的生成式推荐流程，覆盖 item2vec 物品向量、简化 RQ-VAE semantic ID、Tokenizer、Encoder-Decoder Transformer、Beam Search 推理和 HR/NDCG 离线评估。
+本项目基于 PyTorch 从零实现一条 TIGER 风格的生成式推荐流程，覆盖 item2vec 物品向量、简化 RQ-VAE semantic ID、Tokenizer、Encoder-Decoder Transformer、Trie 约束 Beam Search 推理和 HR/NDCG 离线评估。
 实验使用 Amazon Beauty 5-core 数据集，处理后包含 22363 个用户、12101 个物品、131413 个训练样本、22363 个验证样本和 22363 个测试样本。
-当前测试集 HR@20 为 0.0557，NDCG@20 为 0.0227。
+当前测试集 HR@20 为 0.0556，NDCG@20 为 0.0227。
 本项目是面向学习和本地复现的非官方最小实现，不追求完全对齐论文原版训练配置或论文指标。
 
 ## 目录
@@ -31,7 +31,7 @@ TIGER 来自论文 [Recommender Systems with Generative Retrieval](https://arxiv
 2. 用简化 RQ-VAE 将物品向量离散化为 semantic ID。
 3. 将用户历史和目标物品转换成 semantic token 序列。
 4. 用 Encoder-Decoder Transformer 学习根据用户历史生成下一个物品的 semantic ID。
-5. 推理时用 Beam Search 生成候选 semantic ID，并反查回真实 item ID。
+5. 推理时用 Trie 约束 Beam Search 生成真实存在的候选 semantic ID，并反查回 item ID。
 
 更详细的原理说明放在：
 
@@ -45,8 +45,8 @@ TIGER 来自论文 [Recommender Systems with Generative Retrieval](https://arxiv
 
 | 数据划分 | HR@5 | NDCG@5 | HR@10 | NDCG@10 | HR@20 | NDCG@20 |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| 验证集 | 0.0288 | 0.0182 | 0.0482 | 0.0245 | 0.0732 | 0.0308 |
-| 测试集 | 0.0200 | 0.0126 | 0.0356 | 0.0176 | 0.0557 | 0.0227 |
+| 验证集 | 0.0286 | 0.0182 | 0.0482 | 0.0245 | 0.0733 | 0.0309 |
+| 测试集 | 0.0200 | 0.0127 | 0.0353 | 0.0176 | 0.0556 | 0.0227 |
 
 | 指标 | 数值 |
 | --- | ---: |
@@ -60,8 +60,8 @@ TIGER 来自论文 [Recommender Systems with Generative Retrieval](https://arxiv
 | 测试集目标物品冷启动比例 | 0.62% |
 | Beam size / Top-K | 50 / 20 |
 | 平均有效推荐数 | 20.0 |
-| 验证集无效码率 | 0.20% |
-| 测试集无效码率 | 0.17% |
+| 验证集无效码率 | 0 |
+| 测试集无效码率 | 0 |
 
 说明：平均有效推荐数表示每个样本经过 Beam Search、semantic ID 反查和去重过滤后，平均能留下多少个推荐物品；无效码率表示 Beam Search 生成的 semantic ID 中无法反查到真实 item 的比例。
 
@@ -206,7 +206,8 @@ data/
 | [tiger_min/tiger/dataset.py](tiger_min/tiger/dataset.py) | TIGER 训练样本和 batch collate |
 | [tiger_min/tiger/model.py](tiger_min/tiger/model.py) | Encoder-Decoder Transformer |
 | [tiger_min/tiger/train_tiger.py](tiger_min/tiger/train_tiger.py) | TIGER 训练入口 |
-| [tiger_min/tiger/inference.py](tiger_min/tiger/inference.py) | Beam Search 推理和 HR/NDCG 评估 |
+| [tiger_min/tiger/trie.py](tiger_min/tiger/trie.py) | 从真实物品 semantic ID 构建前缀约束树 |
+| [tiger_min/tiger/inference.py](tiger_min/tiger/inference.py) | Trie 约束 Beam Search 推理和 HR/NDCG 评估 |
 
 ## 与 TIGER 原论文的区别
 
@@ -217,7 +218,7 @@ data/
 | semantic ID 唯一性 | 论文完整系统设计 | RQ-VAE code 后追加 suffix，保证最终 ID 唯一 |
 | 用户输入 | 论文完整用户历史 semantic ID 设置 | 当前只使用用户历史 semantic ID |
 | 模型实现 | 完整训练框架和更充分调参 | 基于 PyTorch `nn.Transformer` 的最小实现 |
-| 推理方式 | 生成式检索 | Beam Search 生成后过滤无效 ID |
+| 推理方式 | 生成式检索 | Trie 约束 Beam Search，只扩展真实 semantic ID 前缀 |
 | 目标 | 论文级 benchmark | 本地可复现最小实现 |
 
 本项目不声称复现论文完整指标。重点是复现 TIGER 的主干思路和工程闭环。
@@ -282,14 +283,16 @@ python -m tiger_min.baselines.popular --processed-dir data/processed/beauty
 
 | 模型 | 数据划分 | HR@5 | NDCG@5 | HR@10 | NDCG@10 | HR@20 | NDCG@20 |
 | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| TIGER Minimal | 验证集 | 0.0288 | 0.0182 | 0.0482 | 0.0245 | 0.0732 | 0.0308 |
-| TIGER Minimal | 测试集 | 0.0200 | 0.0126 | 0.0356 | 0.0176 | 0.0557 | 0.0227 |
+| TIGER Minimal | 验证集 | 0.0286 | 0.0182 | 0.0482 | 0.0245 | 0.0733 | 0.0309 |
+| TIGER Minimal | 测试集 | 0.0200 | 0.0127 | 0.0353 | 0.0176 | 0.0556 | 0.0227 |
 | Popular Baseline | 验证集 | 0.0098 | 0.0059 | 0.0163 | 0.0079 | 0.0265 | 0.0104 |
 | Popular Baseline | 测试集 | 0.0073 | 0.0040 | 0.0114 | 0.0053 | 0.0195 | 0.0073 |
 
-### 束搜索（Beam Search）无效码统计
+### Trie 约束 Beam Search
 
-Beam Search 无效码统计由 `tiger_min.tiger.inference` 在评估时输出：
+评估程序会根据全部真实物品的 semantic ID 构建 Trie。每一步解码时，先根据当前前缀查询允许的下一 token，再计算并保留累计对数概率最高的候选路径，因此完整生成路径都能映射到真实物品。
+
+推理指标和无效码统计由 `tiger_min.tiger.inference` 输出：
 
 ```powershell
 python -m tiger_min.tiger.inference --checkpoint data/processed/beauty/tiger_e20/tiger.pt --split test --output data/processed/beauty/tiger_e20/eval_test_epoch20.json
@@ -297,10 +300,10 @@ python -m tiger_min.tiger.inference --checkpoint data/processed/beauty/tiger_e20
 
 | 数据划分 | Beam size | Top-K | 平均有效推荐数 | 生成 semantic ID 数 | 无效 semantic ID 数 | 无效码率 |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| 验证集 | 50 | 20 | 20.0 | 1118150 | 2291 | 0.20% |
-| 测试集 | 50 | 20 | 20.0 | 1118150 | 1902 | 0.17% |
+| 验证集 | 50 | 20 | 20.0 | 1118150 | 0 | 0 |
+| 测试集 | 50 | 20 | 20.0 | 1118150 | 0 | 0 |
 
-说明：无效 semantic ID 指 Beam Search 生成后无法在 `semantic_id -> item` 映射表中反查到真实物品的 ID 序列；无效码率 = 无效 semantic ID 数 / 生成 semantic ID 总数。
+说明：无效 semantic ID 指生成后无法在 `semantic_id -> item` 映射表中反查到真实物品的 ID 序列；无效码率 = 无效 semantic ID 数 / 生成 semantic ID 总数。Trie 约束使每条完整生成路径都对应一个真实物品，因此本次验证集和测试集的无效码率均为 0。
 
 ### 目标物品覆盖率
 
@@ -319,10 +322,9 @@ python -m tiger_min.data.dataset_stats --processed-dir data/processed/beauty
 
 ## 局限性与后续工作
 
-- 当前 Beam Search 只按 semantic ID 位置限制 token 范围，生成完成后再过滤无效 semantic ID；尚未实现基于 Trie 的前缀约束搜索。
 - 当前 item embedding 来自 item2vec 交互序列，没有接入商品标题、类目、品牌等文本信息。
 - 后续可以将 item embedding 来源替换为文本 embedding，并比较交互语义和内容语义对 semantic ID 的影响。
-- 后续可以实现 Trie-constrained Beam Search，减少无效 semantic ID 候选。
+- 当前 Trie 约束在每轮解码时动态构造合法 token mask；后续可将前缀状态和转移表进一步张量化，降低大 beam 推理时的 CPU 调度开销。
 
 ## 论文引用
 
